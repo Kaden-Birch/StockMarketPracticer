@@ -129,3 +129,852 @@ extensibility design (ARCHITECTURE.md §1.2, §29-mapped plugin registry).
 - **Performance:** hundreds-of-symbols watch benchmark maintained in CI from
   M1; GPU paths always paired with CPU fallbacks.
 - **Docs:** user guide and API reference updated per milestone.
+
+
+
+
+
+---
+## M6 and Beyond.
+M6 — Gamification, Progression & Personal Learning Experience
+Goal
+
+Introduce engaging game mechanics that encourage users to learn investing concepts, develop good portfolio habits, and improve their financial knowledge.
+
+Gamification must reinforce:
+
+Learning
+Research
+Long-term thinking
+Risk management
+Portfolio discipline
+
+Gamification must not reward:
+
+Excessive trading
+Gambling behavior
+Short-term speculation
+High-risk strategies purely for points
+6.1 User Profile System
+
+Create a permanent user profile independent of individual investment games.
+
+Profile stores:
+Username
+Avatar
+Profile level
+XP
+Achievements
+Titles
+Badges
+Completed lessons
+Knowledge progress
+Historical performance
+Statistics
+6.2 Profile Level System
+
+Profile level represents the user's overall investing experience.
+
+Profile XP is earned through:
+
+Education XP
+
+Examples:
+
+Completing lessons
+Reading company information
+Completing quizzes
+Learning new concepts
+Research XP
+
+Examples:
+
+Reviewing financial statements
+Comparing companies
+Using analytics tools
+Performing portfolio analysis
+Portfolio XP
+
+Examples:
+
+Maintaining diversification
+Managing risk
+Achieving investment goals
+Following strategies successfully
+Challenge XP
+
+Examples:
+
+Completing scenarios
+Participating in competitions
+Finishing objectives
+6.3 Profile Titles
+
+Cosmetic titles only.
+
+Examples:
+
+Beginner Investor
+
+↓
+
+Market Student
+
+↓
+
+Retail Investor
+
+↓
+
+Analyst
+
+↓
+
+Portfolio Manager
+
+↓
+
+Fund Manager
+
+↓
+
+Institutional Investor
+
+↓
+
+Legendary Investor
+
+6.4 Independent Game System
+
+Users can create unlimited investment simulations.
+
+Each game contains:
+
+Portfolio
+Starting capital
+Rules
+Mode
+Duration
+Challenges
+Achievements
+Statistics
+History
+
+Example:
+
+Game 1:
+$100,000 Growth Portfolio
+
+Game 2:
+$50,000 Dividend Challenge
+
+Game 3:
+2008 Financial Crisis Simulation
+6.5 Game Level System
+
+Each individual game has its own progression.
+
+Example:
+
+User Profile Level:
+25
+
+Growth Portfolio:
+Level 14
+
+Dividend Portfolio:
+Level 8
+
+Expert Competition:
+Level 3
+
+Game level tracks progress within that specific simulation.
+
+6.6 Game Modes
+Beginner Mode
+Purpose
+
+Teach new investors.
+
+Features:
+Guided onboarding
+Simplified dashboards
+Contextual explanations
+AI coaching
+Suggested learning paths
+Beginner challenges
+
+Important:
+
+Features are not permanently locked.
+
+Advanced users can enable advanced tools manually.
+
+Classic Mode
+Purpose
+
+Default experience.
+
+Includes:
+
+Full analytics
+XP system
+Achievements
+Challenges
+AI assistance
+Complete trading tools
+Expert Mode
+Purpose
+
+Experienced investors.
+
+Everything available immediately.
+
+Includes:
+
+Advanced analytics
+Full statistics
+Automation
+Strategy tools
+AI tools
+Backtesting
+Advanced charts
+
+No tutorials or guided introductions.
+
+6.7 Achievement System
+
+Achievements reward meaningful progress.
+
+Categories:
+
+Beginner
+First investment
+First profit
+First dividend
+Education
+Complete 10 lessons
+Analyze 50 companies
+Learn 100 concepts
+Portfolio
+Diversified portfolio
+Beat benchmark
+Survive market crash
+Strategy
+Create first strategy
+Complete backtest
+Execute successful strategy
+Long-Term
+Hold investment for one year
+Maintain portfolio discipline
+6.8 Challenge System
+Daily Challenges
+
+Examples:
+
+Review one company
+Learn one concept
+Analyze portfolio allocation
+Weekly Challenges
+
+Examples:
+
+Build diversified portfolio
+Compare companies
+Review earnings
+Monthly Challenges
+
+Examples:
+
+Beat benchmark
+Reduce portfolio risk
+Complete strategy goals
+6.9 Portfolio Report Card
+
+Generate periodic evaluations.
+
+Metrics:
+
+Diversification
+Risk management
+Research
+Returns
+Patience
+Strategy discipline
+
+Example:
+
+Diversification: A-
+Research: B+
+Risk Management: A
+Patience: C+
+6.10 AI Learning Coach Foundation
+
+Provides:
+
+Portfolio observations
+Learning suggestions
+Risk explanations
+Educational recommendations
+
+Examples:
+
+"You are heavily concentrated in technology stocks."
+
+"Would you like to learn about diversification?"
+
+M7 — Multiplayer, Community & External Integrations
+Goal
+
+Allow users to compete, collaborate, and share investment simulations.
+
+7.1 Multiplayer Games
+
+Support:
+
+Private games
+Friend competitions
+Public competitions
+Investment clubs
+7.2 Multiplayer Modes
+Competitive
+
+Players compete based on:
+
+Returns
+Risk-adjusted returns
+Diversification
+Strategy quality
+Cooperative
+
+Players manage shared portfolios.
+
+Features:
+
+Roles
+Permissions
+Voting
+Shared decisions
+Educational
+
+Designed for:
+
+Classes
+Groups
+Training environments
+7.3 Leaderboards
+
+Categories:
+
+Highest return
+Best risk-adjusted performance
+Best diversification
+Best beginner improvement
+Lowest drawdown
+Best strategy
+7.4 Investment Clubs
+
+Features:
+
+Shared discussions
+Shared challenges
+Club portfolios
+Rankings
+Strategy sharing
+7.5 Discord Integration
+
+Full Discord bot.
+
+Configured through application UI.
+
+No command line configuration.
+
+Discord Features
+
+Notifications:
+
+Trades executed
+AI recommendations
+Achievements
+Challenges
+Portfolio summaries
+Competition updates
+Discord Commands
+
+Examples:
+
+/portfolio
+
+/performance
+
+/company
+
+/leaderboard
+
+/challenge
+
+/summary
+Discord Roles
+
+Automatic role assignment:
+
+Beginner Investor
+Analyst
+Portfolio Manager
+Competition Winner
+7.6 Sharing
+
+Support:
+
+Public portfolios
+Anonymous profiles
+Read-only links
+Strategy sharing
+M8 — Advanced Learning Ecosystem & AI Mentor
+Goal
+
+Create a personalized investing education system powered by AI.
+
+8.1 Persistent AI Mentor
+
+The AI mentor understands:
+
+Portfolio history
+User behavior
+Mistakes
+Strengths
+Knowledge gaps
+Investment style
+
+Examples:
+
+"You often sell winners too early."
+
+"Your portfolio lacks international exposure."
+
+"You have not reviewed valuation metrics yet."
+
+8.2 Historical Market Scenarios
+
+Replay real historical periods.
+
+Examples:
+
+Dot-com crash
+2008 financial crisis
+COVID crash
+Inflation cycles
+Technology booms
+
+Players start without future knowledge.
+
+Compare:
+
+User
+Market
+AI strategies
+Other players
+8.3 Career Mode
+
+Investment career progression.
+
+Ranks:
+
+Intern Investor
+
+↓
+
+Retail Investor
+
+↓
+
+Portfolio Manager
+
+↓
+
+Fund Manager
+
+↓
+
+Institutional Investor
+
+Objectives:
+
+Manage risk
+Beat benchmarks
+Follow mandates
+Protect investors
+8.4 Portfolio Mandates
+
+Scenario restrictions.
+
+Examples:
+
+Retirement Fund
+
+Requirements:
+
+Low volatility
+Diversification
+Growth Fund
+
+Requirements:
+
+Higher growth
+Higher risk
+Dividend Fund
+
+Requirements:
+
+Minimum dividend yield
+Technology Fund
+
+Requirements:
+
+Sector restrictions
+8.5 Advanced Challenges
+
+Examples:
+
+Beat the market
+Survive recession
+Manage billion-dollar portfolio
+Recover from crash
+8.6 Classroom Mode
+
+Features:
+
+Instructor dashboard
+Student portfolios
+Assignments
+Progress tracking
+Custom scenarios
+M9 — AI Investment Competitors & Simulated Opponents
+Goal
+
+Provide realistic competition for users without requiring friends.
+
+AI opponents simulate different investing philosophies.
+
+9.1 AI Competitor Games
+
+Users can create games with:
+
+Human players
+AI players
+Mixed teams
+9.2 AI Investor Profiles
+
+Default competitors:
+
+Conservative Investor
+
+Focus:
+
+Stability
+Dividends
+ETFs
+Low volatility
+Growth Investor
+
+Focus:
+
+Technology
+Emerging companies
+High growth
+Value Investor
+
+Focus:
+
+Undervalued companies
+Fundamentals
+Dividend Investor
+
+Focus:
+
+Income
+Dividend growth
+Technical Trader
+
+Focus:
+
+Indicators
+Momentum
+Quant Investor
+
+Focus:
+
+Data models
+Statistics
+Algorithms
+Market Timer
+
+Focus:
+
+Economic cycles
+Market timing
+Beginner Investor
+
+Purpose:
+
+Educational opponent.
+
+Makes common mistakes.
+
+9.3 AI Difficulty Levels
+Beginner AI
+
+Educational.
+
+Makes mistakes.
+
+Explains decisions.
+
+Intermediate AI
+
+Average investor behavior.
+
+Advanced AI
+
+Strong strategy.
+
+Expert AI
+
+Optimized decision-making.
+
+9.4 AI Personality System
+
+AI behavior controlled by:
+
+Risk tolerance
+Patience
+Confidence
+Conviction
+Adaptability
+9.5 AI Transparency
+
+Every AI action shows:
+
+Decision
+Reason
+Data used
+Confidence
+Expected outcome
+9.6 AI Post-Game Analysis
+
+Reports:
+
+Why you won
+Why you lost
+What strategies worked
+What mistakes occurred
+9.7 Adaptive AI
+
+AI opponents learn from:
+
+User behavior
+Portfolio choices
+Trading patterns
+9.8 AI Tournaments
+
+Examples:
+
+Beat the Market
+Growth vs Value
+Human vs AI
+9.9 Historical AI Opponents
+
+Compete against:
+
+Index funds
+Dividend strategies
+Growth strategies
+Value strategies
+Momentum strategies
+M10 — Investment Knowledge Base & Interactive Learning System
+Goal
+
+Create a built-in financial education system allowing anyone to understand investing concepts.
+
+10.1 Investment Dictionary
+
+Searchable database of:
+
+Terms
+Concepts
+Strategies
+Metrics
+Events
+
+Examples:
+
+Diversification
+P/E Ratio
+Beta
+Dollar Cost Averaging
+Market Cap
+10.2 Multi-Level Explanations
+
+Every concept includes:
+
+Beginner Explanation
+
+Simple language.
+
+Intermediate Explanation
+
+More technical explanation.
+
+Advanced Explanation
+
+Professional-level explanation.
+
+10.3 Contextual Learning
+
+The system detects learning opportunities.
+
+Examples:
+
+User has:
+
+100% Canadian stocks.
+
+Prompt:
+
+"Learn why investors diversify geographically."
+
+User owns:
+
+80% technology stocks.
+
+Prompt:
+
+"Learn about concentration risk."
+
+10.4 AI Explanations
+
+Users can ask:
+
+Explain simply
+Give examples
+Explain impact on my portfolio
+Compare concepts
+10.5 Interactive Simulations
+
+Examples:
+
+Diversification simulator.
+
+Risk simulator.
+
+Market crash simulator.
+
+Compound growth simulator.
+
+10.6 Knowledge Categories
+Investing Basics
+Stocks
+ETFs
+Bonds
+Dividends
+Portfolio Management
+Diversification
+Allocation
+Rebalancing
+Risk
+Financial Metrics
+EPS
+P/E
+Revenue
+Cash flow
+Technical Analysis
+RSI
+MACD
+Moving averages
+Economics
+Inflation
+Interest rates
+GDP
+Strategies
+Growth
+Value
+Dividend
+Index investing
+10.7 Knowledge Tracking
+
+Track:
+
+Concepts viewed
+Lessons completed
+Quiz results
+Knowledge categories
+10.8 Learning Achievements
+
+Examples:
+
+Learned first investing concept
+Completed fundamentals
+Portfolio management expert
+Market history expert
+10.9 AI Mentor Integration
+
+AI recommends learning based on:
+
+Portfolio behavior
+Mistakes
+Knowledge gaps
+10.10 Universal Glossary Integration
+
+Every investing term throughout the application is clickable.
+
+Example:
+
+Beta: 1.35 ❔
+
+Click:
+
+Explanation opens.
+
+10.11 Quizzes
+
+Optional quizzes after lessons.
+
+10.12 Learning Paths
+
+Prebuilt paths:
+
+Beginner Investor
+What are stocks?
+How markets work
+Risk
+Diversification
+Intermediate Investor
+Valuation
+Financial statements
+Portfolio construction
+Advanced Investor
+Factor investing
+Quant strategies
+Risk optimization
+Final M6–M10 Philosophy
+M6
+
+Make investing fun.
+
+M7
+
+Make investing social.
+
+M8
+
+Make investing personal.
+
+M9
+
+Make investing competitive.
+
+M10
+
+Make investing understandable.
+
+Together these milestones transform the application from a paper trading simulator into a complete AI-powered investment education platform.
