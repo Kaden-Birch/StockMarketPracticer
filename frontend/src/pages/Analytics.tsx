@@ -27,6 +27,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     api.getPortfolio(id).then(setPortfolio).catch((e: Error) => setError(e.message));
+    api.gamifyEvent("analytics_reviewed", "", id).catch(() => undefined);
   }, [id]);
 
   useEffect(() => {

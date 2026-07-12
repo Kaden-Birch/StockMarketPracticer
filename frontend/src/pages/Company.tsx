@@ -16,6 +16,8 @@ export default function CompanyPage() {
       .quotes([symbol])
       .then((q) => setQuote(q[symbol.toUpperCase()] ?? null))
       .catch((e: Error) => setError(e.message));
+    // research XP for reviewing a company (server-capped per day)
+    api.gamifyEvent("company_viewed", symbol.toUpperCase()).catch(() => undefined);
   }, [symbol]);
 
   const change =

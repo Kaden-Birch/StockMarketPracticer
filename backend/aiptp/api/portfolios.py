@@ -36,6 +36,8 @@ def create_portfolio(
         starting_balance=body.starting_balance,
         cash_balance=body.starting_balance,
         cost_basis_method=body.cost_basis_method,
+        mode=body.mode,
+        ends_at=body.ends_at,
         notes=body.notes,
     )
     session.add(portfolio)

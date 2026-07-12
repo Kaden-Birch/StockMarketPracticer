@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, fmtMoney, Order, pnlClass, PortfolioView, Txn } from "../api";
+import GameCard from "../components/GameCard";
 import OrderTicket from "../components/OrderTicket";
 import PlansCard from "../components/PlansCard";
 import RebalanceCard from "../components/RebalanceCard";
@@ -181,6 +182,18 @@ export default function PortfolioPage() {
         )}
       </div>
 
+      {portfolio.mode === "BEGINNER" && (
+        <div className="card" style={{ borderColor: "var(--accent)" }}>
+          <h2>Beginner mode</h2>
+          <p className="muted">
+            Welcome! Start by searching a company you know, buy a small amount with
+            the order ticket below, then check the Learning Coach on this page. All
+            advanced tools (automation, strategies, AI) stay available in the nav —
+            nothing is locked.
+          </p>
+        </div>
+      )}
+      <GameCard portfolioId={id} mode={portfolio.mode} />
       <OrderTicket portfolioId={id} onPlaced={refresh} />
       {error && <div className="error">{error}</div>}
       <PlansCard portfolioId={id} currency={portfolio.currency} />

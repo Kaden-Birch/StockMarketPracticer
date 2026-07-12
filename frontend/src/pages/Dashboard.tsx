@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("10000");
   const [method, setMethod] = useState("FIFO");
+  const [mode, setMode] = useState("CLASSIC");
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -34,6 +35,7 @@ export default function Dashboard() {
         name,
         starting_balance: balance,
         cost_basis_method: method,
+        mode,
       });
       setName("");
       refresh();
@@ -146,6 +148,15 @@ export default function Dashboard() {
               <option>FIFO</option>
               <option>LIFO</option>
               <option>AVERAGE</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="pf-mode">Mode</label>
+            <select id="pf-mode" value={mode} onChange={(e) => setMode(e.target.value)}
+              title="Beginner adds guidance; Expert skips all tutorials. Nothing is ever locked.">
+              <option value="BEGINNER">Beginner</option>
+              <option value="CLASSIC">Classic</option>
+              <option value="EXPERT">Expert</option>
             </select>
           </div>
           <button type="submit">Create</button>

@@ -18,6 +18,7 @@ from .api import (
     analytics,
     auth as auth_api,
     automation,
+    gamify,
     marketdata,
     notifications,
     orders,
@@ -150,6 +151,15 @@ def create_app(
             coalesce=True,
         )
         scheduler.add_job(
+            gamify.run_gamify_cycle,
+            "interval",
+            minutes=10,
+            next_run_time=datetime.now() + timedelta(seconds=90),
+            args=[session_factory, market, bus],
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
             backup_database,
             "interval",
             hours=cfg.backup_interval_hours,
@@ -215,6 +225,8 @@ def create_app(
     app.include_router(ai_api.prouter, prefix=api_prefix)
     app.include_router(strategies.router, prefix=api_prefix)
     app.include_router(strategies.whatif_router, prefix=api_prefix)
+    app.include_router(gamify.router, prefix=api_prefix)
+    app.include_router(gamify.prouter, prefix=api_prefix)
     app.include_router(notifications.router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)

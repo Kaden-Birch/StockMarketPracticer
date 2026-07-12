@@ -6,6 +6,7 @@ import AnalyticsPage from "./pages/Analytics";
 import AssistantPage from "./pages/Assistant";
 import AutomationPage from "./pages/Automation";
 import ModelsPage from "./pages/Models";
+import ProfilePage from "./pages/Profile";
 import CompaniesPage from "./pages/Companies";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
@@ -43,6 +44,7 @@ export default function App() {
         <NavLink to="/compare">Compare</NavLink>
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/models">AI Models</NavLink>
+        <NavLink to="/profile">Profile</NavLink>
         <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
         <NotificationBell />
@@ -63,6 +65,7 @@ export default function App() {
           <Route path="/portfolios/:id/whatif" element={<WhatIfPage />} />
           <Route path="/models" element={<ModelsPage />} />
           <Route path="/strategies" element={<StrategiesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:symbol" element={<CompanyPage />} />
           <Route path="/watchlists" element={<WatchlistsPage />} />

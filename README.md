@@ -10,7 +10,20 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M5 — Strategies, Backtesting & What-If (working).** Build rule-based
+**Phase: M6 — Gamification, Progression & Learning (working).** A permanent
+investor profile with categorized XP (education, research, portfolio,
+challenges — never trading volume), levels and a cosmetic title ladder from
+Beginner Investor to Legendary Investor. Every portfolio is an independent
+"game" with its own mode (Beginner/Classic/Expert — nothing ever locked),
+per-game XP and level, and optional end date. 14 achievements across
+beginner/education/portfolio/strategy/long-term categories, rotating
+daily/weekly/monthly challenges with automatic completion detection, a
+portfolio report card grading diversification, risk management, research,
+returns, patience, and strategy discipline, and a deterministic AI Learning
+Coach that turns portfolio observations into learning suggestions (reading
+them earns education XP). All of it is opt-out with one toggle (PRD §23).
+
+Previously — **M5 (Strategies, Backtesting & What-If):** Build rule-based
 strategies (a symbol universe plus entry/exit conditions templated over each
 symbol — price, % move, RSI/SMA/EMA) and backtest them against real daily
 history through the exact same rule-evaluation and order/accounting engine

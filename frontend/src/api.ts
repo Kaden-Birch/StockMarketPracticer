@@ -22,6 +22,8 @@ export interface PortfolioView {
   cash_balance: string;
   cost_basis_method: string;
   dividend_reinvest: boolean;
+  mode: string;
+  game_xp: number;
   created_at: string;
   holdings: HoldingView[];
   market_value: string;
@@ -277,6 +279,56 @@ export interface WhatIfResult {
   note: string;
 }
 
+export interface GamifyProfile {
+  username: string;
+  avatar: string;
+  gamification_enabled: boolean;
+  progress: {
+    level: number;
+    title: string;
+    xp: number;
+    level_floor_xp: number;
+    next_level_xp: number;
+    progress_pct: number;
+    titles: { level: number; title: string; earned: boolean }[];
+  };
+  xp_by_category: Record<string, number>;
+  achievements: {
+    id: string; name: string; category: string; description: string;
+    xp: number; earned_at: string | null;
+  }[];
+  recent_xp: { category: string; kind: string; amount: number; reason: string;
+               created_at: string }[];
+}
+
+export interface ChallengeView {
+  id: string;
+  challenge_id: string;
+  name: string;
+  description: string;
+  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_key: string;
+  current: boolean;
+  xp: number;
+  status: "ACTIVE" | "COMPLETED";
+  completed_at: string | null;
+}
+
+export interface ReportCard {
+  overall: string;
+  generated_at: string;
+  subjects: Record<string, { grade: string; detail: string }>;
+  note: string;
+}
+
+export interface CoachObservation {
+  id: string;
+  observation: string;
+  suggestion: string;
+  topic: string;
+  disclaimer: string;
+}
+
 export interface CompareSeries {
   symbol: string;
   currency: string;
@@ -520,6 +572,27 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ scenario, range }),
     }),
+  gamifyProfile: () => request<GamifyProfile>("/gamify/profile"),
+  updateGamifyProfile: (body: object) =>
+    request<{ ok: boolean }>("/gamify/profile", { method: "PATCH", body: JSON.stringify(body) }),
+  gamifyChallenges: () => request<ChallengeView[]>("/gamify/challenges"),
+  gamifyEvent: (kind: string, reason = "", portfolioId?: string) =>
+    request<{ awarded: boolean }>("/gamify/events", {
+      method: "POST",
+      body: JSON.stringify({ kind, reason, portfolio_id: portfolioId ?? null }),
+    }),
+  gamifyEvaluate: () =>
+    request<{ achievements_granted: number; challenges_completed: number }>(
+      "/gamify/evaluate",
+      { method: "POST" },
+    ),
+  reportCard: (pid: string) => request<ReportCard>(`/portfolios/${pid}/report-card`),
+  coach: (pid: string) =>
+    request<{ observations: CoachObservation[] }>(`/portfolios/${pid}/coach`),
+  gameView: (pid: string) =>
+    request<{ mode: string; game_xp: number; game_level: number; ends_at: string | null }>(
+      `/portfolios/${pid}/game`,
+    ),
   aiSettings: (pid: string) => request<AiSettings>(`/portfolios/${pid}/ai/settings`),
   aiUpdateSettings: (pid: string, body: object) =>
     request<AiSettings>(`/portfolios/${pid}/ai/settings`, {

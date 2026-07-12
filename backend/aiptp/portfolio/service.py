@@ -80,6 +80,8 @@ def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str
         "cash_balance": str(portfolio.cash_balance),
         "cost_basis_method": portfolio.cost_basis_method.value,
         "dividend_reinvest": portfolio.dividend_reinvest,
+        "mode": portfolio.mode.value,
+        "game_xp": portfolio.game_xp,
         "notes": portfolio.notes,
         "created_at": portfolio.created_at.isoformat(),
         "holdings": holdings_out,

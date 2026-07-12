@@ -80,6 +80,15 @@ POST /portfolios/{id}/whatif {"scenario":{"type":"substitute"|"never_sold"|
 design (scenarios re-date nothing; they need historical transactions to
 diverge).
 
+## Gamification (M6)
+
+GET/PATCH /gamify/profile (username/avatar/gamification_enabled),
+POST /gamify/events {kind: company_viewed|companies_compared|
+analytics_reviewed|backtest_completed|coach_suggestion_read} (server-side
+daily caps), POST /gamify/evaluate forces the achievement/challenge cycle
+(also runs every 10 min). Per-portfolio: /report-card, /coach, /game.
+Opt-out must return awarded:false and evaluate must no-op.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

@@ -74,6 +74,12 @@ class Cadence(str, enum.Enum):
     MONTHLY = "MONTHLY"
 
 
+class GameMode(str, enum.Enum):
+    BEGINNER = "BEGINNER"
+    CLASSIC = "CLASSIC"
+    EXPERT = "EXPERT"
+
+
 class Portfolio(Base):
     __tablename__ = "portfolios"
 
@@ -95,6 +101,11 @@ class Portfolio(Base):
     )
     ai_max_trades_per_day: Mapped[int] = mapped_column(default=3)
     ai_default_model: Mapped[str] = mapped_column(String(80), default="")
+    # Each portfolio is an independent "game" (roadmap 6.4-6.6): its own
+    # mode, progression, and optional end date.
+    mode: Mapped[GameMode] = mapped_column(Enum(GameMode), default=GameMode.CLASSIC)
+    game_xp: Mapped[int] = mapped_column(default=0)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -317,6 +328,72 @@ class BacktestRun(Base):
     results: Mapped[str] = mapped_column(Text, default="{}")  # JSON report
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Profile(Base):
+    """Permanent user profile (roadmap 6.1) — independent of any single game.
+    Single-row until multi-user lands in M7. XP is categorized (roadmap 6.2)
+    and never rewards trading frequency (PRD §23)."""
+
+    __tablename__ = "profiles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(80), default="Investor")
+    avatar: Mapped[str] = mapped_column(String(16), default="📈")
+    education_xp: Mapped[int] = mapped_column(default=0)
+    research_xp: Mapped[int] = mapped_column(default=0)
+    portfolio_xp: Mapped[int] = mapped_column(default=0)
+    challenge_xp: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class XpEvent(Base):
+    """Append-only XP audit trail; also drives anti-abuse daily caps."""
+
+    __tablename__ = "xp_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    category: Mapped[str] = mapped_column(String(20))  # education|research|portfolio|challenge
+    kind: Mapped[str] = mapped_column(String(60))  # e.g. company_viewed, challenge:daily_review
+    amount: Mapped[int] = mapped_column()
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    portfolio_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EarnedAchievement(Base):
+    __tablename__ = "earned_achievements"
+    __table_args__ = (Index("ix_earned_achievement_unique", "achievement_id", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    achievement_id: Mapped[str] = mapped_column(String(60))
+    portfolio_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ChallengeStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+
+
+class ChallengeAssignment(Base):
+    """A challenge assigned for a specific period (roadmap 6.8). period_key
+    is the day (2026-07-12), ISO week (2026-W28), or month (2026-07)."""
+
+    __tablename__ = "challenge_assignments"
+    __table_args__ = (
+        Index("ix_challenge_period_unique", "challenge_id", "period_key", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    challenge_id: Mapped[str] = mapped_column(String(60))
+    period_type: Mapped[str] = mapped_column(String(10))  # DAILY | WEEKLY | MONTHLY
+    period_key: Mapped[str] = mapped_column(String(12))
+    status: Mapped[ChallengeStatus] = mapped_column(
+        Enum(ChallengeStatus), default=ChallengeStatus.ACTIVE
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AppSetting(Base):

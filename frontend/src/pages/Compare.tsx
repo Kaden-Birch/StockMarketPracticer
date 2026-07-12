@@ -39,6 +39,7 @@ export default function ComparePage() {
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
     setSymbols([...new Set(parsed)]);
+    api.gamifyEvent("companies_compared", parsed.join(",")).catch(() => undefined);
   }
 
   return (

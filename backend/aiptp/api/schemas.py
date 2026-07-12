@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from ..storage.models import (
     Cadence,
     CostBasisMethod,
+    GameMode,
     OrderSide,
     OrderStatus,
     OrderType,
@@ -21,6 +22,8 @@ class PortfolioCreate(BaseModel):
     currency: str = Field(default="USD", max_length=8)
     starting_balance: Decimal = Field(gt=0)
     cost_basis_method: CostBasisMethod = CostBasisMethod.FIFO
+    mode: GameMode = GameMode.CLASSIC
+    ends_at: datetime | None = None
     notes: str = ""
 
     @field_validator("currency")
