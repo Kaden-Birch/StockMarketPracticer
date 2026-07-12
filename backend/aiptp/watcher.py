@@ -9,10 +9,12 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from decimal import Decimal
+
 from .core.events import EventBus
 from .marketdata.base import MarketDataError
 from .marketdata.service import MarketDataService
-from .storage.models import Holding, Order, OrderStatus
+from .storage.models import Holding, Order, OrderStatus, Portfolio
 from .trading.engine import evaluate_pending_orders
 
 log = logging.getLogger(__name__)
@@ -49,7 +51,29 @@ def run_watch_cycle(
         )
 
         prices = {s: q.price for s, q in quotes.items()}
-        fills = evaluate_pending_orders(session, prices)
+        # FX rates for pending orders whose security trades in a different
+        # currency than its portfolio.
+        pending_pairs = session.execute(
+            select(Order.symbol, Portfolio.currency)
+            .join(Portfolio, Portfolio.id == Order.portfolio_id)
+            .where(Order.status == OrderStatus.PENDING, Order.symbol.in_(list(prices)))
+            .distinct()
+        ).all()
+        fx_rates: dict[str, "Decimal"] = {}
+        quote_currencies = {s: q.currency for s, q in quotes.items()}
+        for symbol, portfolio_ccy in pending_pairs:
+            quote = quotes.get(symbol)
+            if quote is None or quote.currency == portfolio_ccy:
+                continue
+            try:
+                fx_rates[f"{symbol}:{portfolio_ccy}"] = market.get_fx_rate(
+                    quote.currency, portfolio_ccy
+                )
+            except MarketDataError as exc:
+                log.warning("FX fetch failed for %s->%s: %s", quote.currency, portfolio_ccy, exc)
+                prices.pop(symbol, None)  # don't fill at a wrong rate
+
+        fills = evaluate_pending_orders(session, prices, fx_rates, quote_currencies)
         session.commit()
         for txn in fills:
             log.info("Filled order %s: %s %s %s @ %s",

@@ -33,6 +33,7 @@ class OrderType(str, enum.Enum):
     LIMIT = "LIMIT"
     STOP = "STOP"
     STOP_LIMIT = "STOP_LIMIT"
+    TRAILING_STOP = "TRAILING_STOP"
 
 
 class OrderStatus(str, enum.Enum):
@@ -51,6 +52,26 @@ class Origin(str, enum.Enum):
     AUTOMATION = "AUTOMATION"
     AI_ASSISTED = "AI_ASSISTED"
     AI_AUTO = "AI_AUTO"
+    SYSTEM = "SYSTEM"  # corporate actions applied by the platform
+    DIVIDEND_REINVEST = "DIVIDEND_REINVEST"
+
+
+class TransactionKind(str, enum.Enum):
+    TRADE = "TRADE"
+    DIVIDEND = "DIVIDEND"  # cash dividend credit
+    SPLIT = "SPLIT"  # share-quantity adjustment, no cash movement
+
+
+class PercentOf(str, enum.Enum):
+    CASH = "CASH"
+    PORTFOLIO ="PORTFOLIO"
+    POSITION = "POSITION"  # sells: percentage of current holding
+
+
+class Cadence(str, enum.Enum):
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
 
 
 class Portfolio(Base):
@@ -65,6 +86,7 @@ class Portfolio(Base):
     cost_basis_method: Mapped[CostBasisMethod] = mapped_column(
         Enum(CostBasisMethod), default=CostBasisMethod.FIFO
     )
+    dividend_reinvest: Mapped[bool] = mapped_column(default=False)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -123,6 +145,11 @@ class Order(Base):
     limit_price: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
     stop_price: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
     stop_triggered: Mapped[bool] = mapped_column(default=False)
+    trail_amount: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    trail_percent: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    watermark: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    percent: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    percent_of: Mapped[PercentOf | None] = mapped_column(Enum(PercentOf), nullable=True)
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.PENDING)
     reject_reason: Mapped[str] = mapped_column(Text, default="")
     origin: Mapped[Origin] = mapped_column(Enum(Origin), default=Origin.MANUAL)
@@ -148,7 +175,75 @@ class Transaction(Base):
     amount: Mapped[Decimal] = mapped_column(DecimalStr)
     fees: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("0"))
     realized_pnl: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    kind: Mapped[TransactionKind] = mapped_column(
+        Enum(TransactionKind), default=TransactionKind.TRADE
+    )
+    fx_rate: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("1"))
+    quote_currency: Mapped[str] = mapped_column(String(8), default="USD")
     origin: Mapped[Origin] = mapped_column(Enum(Origin), default=Origin.MANUAL)
     executed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="transactions")
+
+
+class RecurringPlan(Base):
+    """Dollar-cost-averaging / recurring purchase plan. Executed by the
+    scheduler when next_run_at passes; runs 24/7 in server mode."""
+
+    __tablename__ = "recurring_plans"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    symbol: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(DecimalStr)  # notional, portfolio currency
+    cadence: Mapped[Cadence] = mapped_column(Enum(Cadence))
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    enabled: Mapped[bool] = mapped_column(default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    run_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Watchlist(Base):
+    __tablename__ = "watchlists"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list["WatchlistItem"]] = relationship(
+        back_populates="watchlist", cascade="all, delete-orphan", order_by="WatchlistItem.added_at"
+    )
+
+
+class WatchlistItem(Base):
+    __tablename__ = "watchlist_items"
+    __table_args__ = (
+        Index("ix_watchlist_items_unique", "watchlist_id", "symbol", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    watchlist_id: Mapped[str] = mapped_column(ForeignKey("watchlists.id", ondelete="CASCADE"))
+    symbol: Mapped[str] = mapped_column(String(20))
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    watchlist: Mapped[Watchlist] = relationship(back_populates="items")
+
+
+class AppliedCorporateAction(Base):
+    """Idempotency record: which dividend/split events have already been
+    applied to which portfolio."""
+
+    __tablename__ = "applied_corporate_actions"
+    __table_args__ = (
+        Index(
+            "ix_applied_corp_unique", "portfolio_id", "symbol", "kind", "ex_ts", unique=True
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    symbol: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(16))  # DIVIDEND | SPLIT
+    ex_ts: Mapped[int] = mapped_column()  # provider event timestamp (unix)
+    applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

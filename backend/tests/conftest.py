@@ -14,8 +14,8 @@ def fake_provider() -> FakeProvider:
 
 @pytest.fixture
 def client(tmp_path, fake_provider) -> TestClient:
-    cfg = Settings(db_url=f"sqlite:///{tmp_path / 'test.db'}", market_provider="fake")
-    market = MarketDataService(fake_provider, quote_ttl=0, history_ttl=0)
+    cfg = Settings(db_url=f"sqlite:///{tmp_path / 'test.db'}", market_providers="fake")
+    market = MarketDataService([fake_provider], quote_ttl=0, history_ttl=0)
     app = create_app(cfg, market=market)
     with TestClient(app) as c:
         yield c

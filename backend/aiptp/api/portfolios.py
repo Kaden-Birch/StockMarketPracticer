@@ -9,6 +9,18 @@ from .deps import get_db, get_market, get_portfolio_or_404
 from .schemas import PortfolioCreate, PortfolioUpdate, TransactionOut
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
+symbols_router = APIRouter(prefix="/symbols", tags=["portfolios"])
+
+
+@symbols_router.get("/{symbol}/transactions", response_model=list[TransactionOut])
+def symbol_transactions(symbol: str, session: Session = Depends(get_db)):
+    """All transactions for a symbol across portfolios — feeds the company
+    chart's buy/sell/dividend/split overlay markers."""
+    return session.scalars(
+        select(Transaction)
+        .where(Transaction.symbol == symbol.upper())
+        .order_by(Transaction.executed_at)
+    ).all()
 
 
 @router.post("", status_code=201)

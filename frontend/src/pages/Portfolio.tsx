@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, fmtMoney, Order, pnlClass, PortfolioView, Txn } from "../api";
 import OrderTicket from "../components/OrderTicket";
+import PlansCard from "../components/PlansCard";
+import RebalanceCard from "../components/RebalanceCard";
 import { useEvents } from "../hooks/useEvents";
 
 export default function PortfolioPage() {
@@ -38,6 +40,22 @@ export default function PortfolioPage() {
     }
   }
 
+  async function closePosition(symbol: string, quantity: string) {
+    if (!window.confirm(`Sell all ${quantity} ${symbol} at market?`)) return;
+    try {
+      await api.placeOrder(id, { symbol, side: "SELL", type: "MARKET", quantity });
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function toggleReinvest() {
+    if (!portfolio) return;
+    await api.updatePortfolio(id, { dividend_reinvest: !portfolio.dividend_reinvest });
+    refresh();
+  }
+
   async function remove() {
     if (!window.confirm(`Delete portfolio "${portfolio?.name}"? This cannot be undone.`)) return;
     await api.deletePortfolio(id);
@@ -52,7 +70,27 @@ export default function PortfolioPage() {
 
   return (
     <div>
-      <h1>{portfolio.name}</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <h1 style={{ marginBottom: 0 }}>{portfolio.name}</h1>
+        <span style={{ flex: 1 }} />
+        <Link to={`/portfolios/${id}/analytics`}>
+          <button className="ghost" type="button">Analytics</button>
+        </Link>
+        <a href={api.exportUrl(id, "csv")} download>
+          <button className="ghost" type="button">CSV</button>
+        </a>
+        <a href={api.exportUrl(id, "json")} download>
+          <button className="ghost" type="button">JSON</button>
+        </a>
+        <a href={api.exportUrl(id, "md")} download>
+          <button className="ghost" type="button">Markdown</button>
+        </a>
+        <button className="ghost" type="button" onClick={toggleReinvest}
+          title="Automatically reinvest cash dividends into the paying stock">
+          Dividend reinvest: {portfolio.dividend_reinvest ? "ON" : "OFF"}
+        </button>
+      </div>
+      <div style={{ height: 12 }} />
       {portfolio.quote_errors.length > 0 && (
         <div className="error">Some quotes unavailable: {portfolio.quote_errors.join("; ")}</div>
       )}
@@ -103,6 +141,7 @@ export default function PortfolioPage() {
                 <th className="num">Market value</th>
                 <th className="num">Unrealized</th>
                 <th className="num">Day</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -121,6 +160,11 @@ export default function PortfolioPage() {
                   <td className={`num ${pnlClass(h.day_change)}`}>
                     {fmtMoney(h.day_change, portfolio.currency)}
                   </td>
+                  <td>
+                    <button className="ghost" onClick={() => closePosition(h.symbol, h.quantity)}>
+                      Close
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -130,6 +174,9 @@ export default function PortfolioPage() {
 
       <OrderTicket portfolioId={id} onPlaced={refresh} />
       {error && <div className="error">{error}</div>}
+      <PlansCard portfolioId={id} currency={portfolio.currency} />
+      <RebalanceCard key={portfolio.holdings.map((h) => h.symbol).join(",")}
+        portfolio={portfolio} onExecuted={refresh} />
 
       {pending.length > 0 && (
         <div className="card">
@@ -223,7 +270,9 @@ export default function PortfolioPage() {
                 <tr key={t.id}>
                   <td className="muted">{new Date(t.executed_at).toLocaleString()}</td>
                   <td>{t.symbol}</td>
-                  <td className={t.side === "BUY" ? "gain" : "loss"}>{t.side}</td>
+                  <td className={t.kind !== "TRADE" ? "" : t.side === "BUY" ? "gain" : "loss"}>
+                    {t.kind === "TRADE" ? t.side : t.kind}
+                  </td>
                   <td className="num">{t.quantity}</td>
                   <td className="num">{fmtMoney(t.price, portfolio.currency)}</td>
                   <td className="num">{fmtMoney(t.amount, portfolio.currency)}</td>

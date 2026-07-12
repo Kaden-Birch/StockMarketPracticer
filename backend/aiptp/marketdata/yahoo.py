@@ -3,7 +3,16 @@ from decimal import Decimal
 
 import httpx
 
-from .base import Bar, History, MarketDataError, Quote, SymbolMatch, SymbolNotFound
+from .base import (
+    Bar,
+    Capability,
+    CorporateAction,
+    History,
+    MarketDataError,
+    Quote,
+    SymbolMatch,
+    SymbolNotFound,
+)
 
 _BASE = "https://query1.finance.yahoo.com"
 _HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AIPTP/0.1"}
@@ -15,6 +24,13 @@ class YahooProvider:
     recorded on every value returned."""
 
     name = "yahoo"
+    capabilities = {
+        Capability.QUOTES,
+        Capability.HISTORY,
+        Capability.SEARCH,
+        Capability.CORPORATE_ACTIONS,
+        Capability.FX,
+    }
 
     def __init__(self, timeout: float = 10.0):
         self._client = httpx.Client(base_url=_BASE, headers=_HEADERS, timeout=timeout)
@@ -22,10 +38,11 @@ class YahooProvider:
     def close(self) -> None:
         self._client.close()
 
-    def _chart(self, symbol: str, range_: str, interval: str) -> dict:
-        resp = self._client.get(
-            f"/v8/finance/chart/{symbol}", params={"range": range_, "interval": interval}
-        )
+    def _chart(self, symbol: str, range_: str, interval: str, events: str = "") -> dict:
+        params: dict[str, str] = {"range": range_, "interval": interval}
+        if events:
+            params["events"] = events
+        resp = self._client.get(f"/v8/finance/chart/{symbol}", params=params)
         if resp.status_code == 404:
             raise SymbolNotFound(f"Unknown symbol: {symbol}")
         if resp.status_code != 200:
@@ -88,6 +105,50 @@ class YahooProvider:
             provider=self.name,
             fetched_at=datetime.now(timezone.utc),
         )
+
+    def get_corporate_actions(self, symbol: str, range_: str = "3mo") -> list[CorporateAction]:
+        result = self._chart(symbol, range_, "1d", events="div|split")
+        events = result.get("events", {})
+        actions: list[CorporateAction] = []
+        for ts, div in (events.get("dividends") or {}).items():
+            if div.get("amount"):
+                actions.append(
+                    CorporateAction(
+                        symbol=symbol.upper(),
+                        kind="DIVIDEND",
+                        ex_ts=int(div.get("date", ts)),
+                        amount=Decimal(str(div["amount"])),
+                        provider=self.name,
+                    )
+                )
+        for ts, split in (events.get("splits") or {}).items():
+            num, den = split.get("numerator"), split.get("denominator")
+            if num and den:
+                actions.append(
+                    CorporateAction(
+                        symbol=symbol.upper(),
+                        kind="SPLIT",
+                        ex_ts=int(split.get("date", ts)),
+                        ratio=Decimal(str(num)) / Decimal(str(den)),
+                        provider=self.name,
+                    )
+                )
+        actions.sort(key=lambda a: a.ex_ts)
+        return actions
+
+    def get_fx_rate(self, from_ccy: str, to_ccy: str) -> Decimal:
+        if from_ccy == to_ccy:
+            return Decimal("1")
+        # GBp (pence) quirk: Yahoo quotes LSE equities in pence.
+        scale = Decimal("1")
+        if from_ccy == "GBp":
+            from_ccy, scale = "GBP", Decimal("0.01")
+        pair = f"{to_ccy}=X" if from_ccy == "USD" else f"{from_ccy}{to_ccy}=X"
+        result = self._chart(pair, "1d", "1d")
+        price = result["meta"].get("regularMarketPrice")
+        if price is None:
+            raise MarketDataError(f"No FX rate for {from_ccy}/{to_ccy}")
+        return Decimal(str(price)) * scale
 
     def search(self, query: str) -> list[SymbolMatch]:
         resp = self._client.get(

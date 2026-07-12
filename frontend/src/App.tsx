@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
+import AnalyticsPage from "./pages/Analytics";
 import CompaniesPage from "./pages/Companies";
 import CompanyPage from "./pages/Company";
+import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
 import PortfolioPage from "./pages/Portfolio";
+import WatchlistsPage from "./pages/Watchlists";
 
 function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState(
@@ -28,6 +31,8 @@ export default function App() {
           Dashboard
         </NavLink>
         <NavLink to="/companies">Companies</NavLink>
+        <NavLink to="/watchlists">Watchlists</NavLink>
+        <NavLink to="/compare">Compare</NavLink>
         <div className="spacer" />
         <button className="ghost" onClick={toggleTheme}>
           {theme === "dark" ? "Light theme" : "Dark theme"}
@@ -40,8 +45,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolios/:id" element={<PortfolioPage />} />
+          <Route path="/portfolios/:id/analytics" element={<AnalyticsPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:symbol" element={<CompanyPage />} />
+          <Route path="/watchlists" element={<WatchlistsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
         </Routes>
       </main>
     </>

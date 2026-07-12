@@ -44,14 +44,37 @@ class SymbolMatch:
     type: str
 
 
+@dataclass
+class CorporateAction:
+    symbol: str
+    kind: str  # DIVIDEND | SPLIT
+    ex_ts: int  # unix seconds of the event (ex-date)
+    amount: Decimal | None = None  # per-share cash amount (dividends)
+    ratio: Decimal | None = None  # new shares per old share (splits)
+    provider: str = ""
+
+
+class Capability:
+    QUOTES = "quotes"
+    HISTORY = "history"
+    SEARCH = "search"
+    CORPORATE_ACTIONS = "corporate_actions"
+    FX = "fx"
+
+
 class MarketDataProvider(Protocol):
     name: str
+    capabilities: set[str]
 
     def get_quotes(self, symbols: list[str]) -> dict[str, Quote]: ...
 
     def get_history(self, symbol: str, range_: str, interval: str) -> History: ...
 
     def search(self, query: str) -> list[SymbolMatch]: ...
+
+    def get_corporate_actions(self, symbol: str, range_: str) -> list[CorporateAction]: ...
+
+    def get_fx_rate(self, from_ccy: str, to_ccy: str) -> Decimal: ...
 
 
 class MarketDataError(Exception):

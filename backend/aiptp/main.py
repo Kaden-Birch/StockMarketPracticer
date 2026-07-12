@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,13 +11,17 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
-from .api import marketdata, orders, portfolios, ws
+from .api import analytics, marketdata, orders, plans, portfolios, watchlists, ws
 from .config import Settings, settings
 from .core.events import EventBus
+from .marketdata.alphavantage import AlphaVantageProvider
 from .marketdata.fake import FakeProvider
 from .marketdata.service import MarketDataService
+from .marketdata.stooq import StooqProvider
 from .marketdata.yahoo import YahooProvider
 from .storage.db import Base, make_engine, make_session_factory
+from .trading.corporate import run_corporate_actions_cycle
+from .trading.recurring import run_recurring_cycle
 from .watcher import run_watch_cycle
 
 log = logging.getLogger(__name__)
@@ -39,12 +44,26 @@ class SPAStaticFiles(StaticFiles):
 
 
 def build_market(cfg: Settings) -> MarketDataService:
-    if cfg.market_provider == "fake":
-        provider = FakeProvider()
-    else:
-        provider = YahooProvider()
+    providers = []
+    for name in [p.strip().lower() for p in cfg.market_providers.split(",") if p.strip()]:
+        if name == "yahoo":
+            providers.append(YahooProvider())
+        elif name == "stooq":
+            providers.append(StooqProvider())
+        elif name == "alphavantage":
+            if cfg.alphavantage_key:
+                providers.append(AlphaVantageProvider(cfg.alphavantage_key))
+            else:
+                log.warning("alphavantage listed in AIPTP_MARKET_PROVIDERS but "
+                            "AIPTP_ALPHAVANTAGE_KEY is not set — skipping")
+        elif name == "fake":
+            providers.append(FakeProvider())
+        else:
+            log.warning("Unknown market provider %r — skipping", name)
+    if not providers:
+        providers = [YahooProvider(), StooqProvider()]
     return MarketDataService(
-        provider, quote_ttl=cfg.quote_ttl_seconds, history_ttl=cfg.history_ttl_seconds
+        providers, quote_ttl=cfg.quote_ttl_seconds, history_ttl=cfg.history_ttl_seconds
     )
 
 
@@ -64,6 +83,23 @@ def create_app(cfg: Settings | None = None, market: MarketDataService | None = N
             run_watch_cycle,
             "interval",
             seconds=cfg.watch_interval_seconds,
+            args=[session_factory, market, bus],
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_recurring_cycle,
+            "interval",
+            seconds=60,
+            args=[session_factory, market, bus],
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_corporate_actions_cycle,
+            "interval",
+            hours=6,
+            next_run_time=datetime.now() + timedelta(seconds=45),
             args=[session_factory, market, bus],
             max_instances=1,
             coalesce=True,
@@ -88,7 +124,11 @@ def create_app(cfg: Settings | None = None, market: MarketDataService | None = N
 
     api_prefix = "/api/v1"
     app.include_router(portfolios.router, prefix=api_prefix)
+    app.include_router(portfolios.symbols_router, prefix=api_prefix)
     app.include_router(orders.router, prefix=api_prefix)
+    app.include_router(plans.router, prefix=api_prefix)
+    app.include_router(watchlists.router, prefix=api_prefix)
+    app.include_router(analytics.router, prefix=api_prefix)
     app.include_router(marketdata.router, prefix=api_prefix)
     app.include_router(ws.router, prefix=api_prefix)
 

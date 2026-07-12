@@ -10,12 +10,17 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M1 — Core Simulation Foundation (working).** The first runnable
-version is here: a FastAPI trading server with real Yahoo Finance market data,
-portfolios with lot-based FIFO/LIFO/Average cost accounting, market / limit /
-stop / stop-limit orders, a background price watcher that fills pending orders,
-a REST + WebSocket API, and a React web UI with interactive price charts and
-light/dark themes. See [docs/ROADMAP.md](docs/ROADMAP.md) for what lands next.
+**Phase: M2 — Full Trading & Portfolio Depth (working).** On top of the M1
+core (portfolios, lot-based cost accounting, market/limit/stop orders, price
+watcher, REST + WebSocket API, React UI), M2 adds: trailing stops,
+dollar-cost-averaging plans that execute 24/7, percent-of-cash/portfolio/
+position sizing, one-click rebalancing with preview, batch orders, real
+dividend and split application (with optional reinvestment), multi-currency
+fills at live FX rates, watchlists, company comparison, analytics (Sharpe,
+Sortino, beta, max drawdown, diversification, records), CSV/JSON/Markdown
+exports, chart event markers + SMA overlays with synchronized ranges, and a
+Yahoo→Stooq→Alpha Vantage provider failover chain. See
+[docs/ROADMAP.md](docs/ROADMAP.md) for what lands next.
 
 ### Run it (development)
 

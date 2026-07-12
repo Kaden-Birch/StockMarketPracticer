@@ -10,7 +10,9 @@ class Settings(BaseSettings):
     db_url: str = ""  # derived from data_dir when empty
     host: str = "127.0.0.1"
     port: int = 8420
-    market_provider: str = "yahoo"  # yahoo | fake
+    # Ordered failover chain; comma-separated: yahoo | stooq | alphavantage | fake
+    market_providers: str = "yahoo,stooq"
+    alphavantage_key: str = ""
     watch_interval_seconds: int = 15
     quote_ttl_seconds: int = 15
     history_ttl_seconds: int = 600

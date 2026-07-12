@@ -15,8 +15,9 @@ detached process) — plain `&` children get reaped when the shell exits.
 Never `pkill -f aiptp.main` — that pattern can match your own shell/session
 command line; use `pkill -f "aiptp[.]main"` at minimum.
 
-`AIPTP_MARKET_PROVIDER=fake` gives deterministic prices without network.
-Default provider is Yahoo (keyless, real data; works through the proxy).
+`AIPTP_MARKET_PROVIDERS=fake` gives deterministic prices without network.
+Default chain is `yahoo,stooq` (keyless, real data; works through the proxy);
+`alphavantage` joins the chain when `AIPTP_ALPHAVANTAGE_KEY` is set.
 
 ## Flows worth driving
 
@@ -39,6 +40,9 @@ button label is the theme it switches TO.
 
 ## Gotchas
 
-- Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (26+ tests, ~1s).
+- Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).
+- Schema changes: no migrations yet (pre-1.0) — delete the data dir for a fresh DB.
+- The recurring-purchase job runs every 60s; a plan created without start_at
+  executes within a minute (origin AUTOMATION on the transaction).
 - Yahoo quote `market_state` is often UNKNOWN (chart-meta endpoint); UI hides it.
 - Watcher fires every 15s; wait ≥ one interval for pending-order fills.

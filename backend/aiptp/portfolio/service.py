@@ -14,10 +14,17 @@ TWO = Decimal("0.01")
 def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str, Any]:
     symbols = [h.symbol for h in portfolio.holdings if h.quantity > 0]
     quotes = {}
+    fx: dict[str, Decimal] = {}
     quote_errors: list[str] = []
     if symbols:
         try:
             quotes = market.get_quotes(symbols)
+            for s, q in quotes.items():
+                try:
+                    fx[s] = market.get_fx_rate(q.currency, portfolio.currency)
+                except MarketDataError as exc:
+                    quote_errors.append(f"FX unavailable for {s}: {exc}")
+                    fx[s] = Decimal("1")
         except MarketDataError as exc:
             quote_errors.append(str(exc))
 
@@ -44,7 +51,8 @@ def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str
             "provider": None,
         }
         if quote:
-            mv = (holding.quantity * quote.price).quantize(TWO)
+            rate = fx.get(holding.symbol, Decimal("1"))
+            mv = (holding.quantity * quote.price * rate).quantize(TWO)
             entry.update(
                 price=str(quote.price),
                 market_value=str(mv),
@@ -54,7 +62,9 @@ def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str
             )
             total_market_value += mv
             if quote.previous_close:
-                dc = (holding.quantity * (quote.price - quote.previous_close)).quantize(TWO)
+                dc = (
+                    holding.quantity * (quote.price - quote.previous_close) * rate
+                ).quantize(TWO)
                 entry["day_change"] = str(dc)
                 day_change += dc
         total_cost += basis
@@ -69,6 +79,7 @@ def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str
         "starting_balance": str(portfolio.starting_balance),
         "cash_balance": str(portfolio.cash_balance),
         "cost_basis_method": portfolio.cost_basis_method.value,
+        "dividend_reinvest": portfolio.dividend_reinvest,
         "notes": portfolio.notes,
         "created_at": portfolio.created_at.isoformat(),
         "holdings": holdings_out,

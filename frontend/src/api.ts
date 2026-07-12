@@ -21,6 +21,7 @@ export interface PortfolioView {
   starting_balance: string;
   cash_balance: string;
   cost_basis_method: string;
+  dividend_reinvest: boolean;
   created_at: string;
   holdings: HoldingView[];
   market_value: string;
@@ -37,11 +38,16 @@ export interface Order {
   portfolio_id: string;
   symbol: string;
   side: "BUY" | "SELL";
-  type: "MARKET" | "LIMIT" | "STOP" | "STOP_LIMIT";
+  type: "MARKET" | "LIMIT" | "STOP" | "STOP_LIMIT" | "TRAILING_STOP";
   quantity: string | null;
   notional: string | null;
+  percent: string | null;
+  percent_of: string | null;
   limit_price: string | null;
   stop_price: string | null;
+  trail_amount: string | null;
+  trail_percent: string | null;
+  watermark: string | null;
   status: "PENDING" | "FILLED" | "CANCELLED" | "REJECTED";
   reject_reason: string;
   origin: string;
@@ -57,8 +63,88 @@ export interface Txn {
   price: string;
   amount: string;
   realized_pnl: string | null;
+  kind: "TRADE" | "DIVIDEND" | "SPLIT";
+  fx_rate: string;
+  quote_currency: string;
   origin: string;
   executed_at: string;
+}
+
+export interface RecurringPlan {
+  id: string;
+  portfolio_id: string;
+  symbol: string;
+  amount: string;
+  cadence: "DAILY" | "WEEKLY" | "MONTHLY";
+  next_run_at: string;
+  enabled: boolean;
+  last_run_at: string | null;
+  run_count: number;
+}
+
+export interface WatchlistView {
+  id: string;
+  name: string;
+  items: {
+    symbol: string;
+    price: string | null;
+    previous_close: string | null;
+    change: string | null;
+    change_pct: string | null;
+    currency: string | null;
+    provider: string | null;
+  }[];
+  quote_errors: string[];
+}
+
+export interface RebalancePlan {
+  total_value: string;
+  cash_balance: string;
+  current_weights: Record<string, string>;
+  targets: Record<string, string>;
+  trades: { symbol: string; side: string; quantity?: string; notional?: string; est_value: string }[];
+}
+
+export interface ValueHistory {
+  portfolio_id: string;
+  range: string;
+  currency: string;
+  benchmark: string;
+  points: { date: string; value: number; benchmark_close: number }[];
+}
+
+export interface Analytics {
+  portfolio_id: string;
+  range: string;
+  risk: {
+    volatility: number | null;
+    sharpe: number | null;
+    sortino: number | null;
+    beta: number | null;
+    max_drawdown: number | null;
+    error?: string;
+  };
+  records: {
+    realized_by_symbol: Record<string, string>;
+    best_symbol: { symbol: string; realized_pnl: string } | null;
+    worst_symbol: { symbol: string; realized_pnl: string } | null;
+    largest_gain: { symbol: string; realized_pnl: string; executed_at: string } | null;
+    largest_loss: { symbol: string; realized_pnl: string; executed_at: string } | null;
+    win_rate: number | null;
+    closed_trades: number;
+    avg_trip_return: number | null;
+    avg_holding_days: number | null;
+  };
+  diversification: { score: number | null; weights: Record<string, number> };
+}
+
+export interface CompareSeries {
+  symbol: string;
+  currency: string;
+  provider: string;
+  points: { ts: number; value: number }[];
+  total_return_pct: number | null;
+  volatility_pct: number | null;
 }
 
 export interface QuoteView {
@@ -133,6 +219,52 @@ export const api = {
   history: (symbol: string, range: string) =>
     request<HistoryView>(`/marketdata/history/${symbol}?range=${range}`),
   search: (q: string) => request<SymbolMatch[]>(`/marketdata/search?q=${encodeURIComponent(q)}`),
+  compare: (symbols: string[], range: string) =>
+    request<{ range: string; series: CompareSeries[] }>(
+      `/marketdata/compare?symbols=${symbols.join(",")}&range=${range}`,
+    ),
+  symbolTransactions: (symbol: string) => request<Txn[]>(`/symbols/${symbol}/transactions`),
+  placeBatch: (pid: string, orders: object[]) =>
+    request<{ results: { symbol: string; status: string; error?: string }[] }>(
+      `/portfolios/${pid}/orders/batch`,
+      { method: "POST", body: JSON.stringify({ orders }) },
+    ),
+  rebalance: (pid: string, targets: Record<string, number>, execute: boolean) =>
+    request<{ plan: RebalancePlan; executed: { symbol: string; status: string }[] | null }>(
+      `/portfolios/${pid}/rebalance`,
+      { method: "POST", body: JSON.stringify({ targets, execute }) },
+    ),
+  updatePortfolio: (pid: string, body: object) =>
+    request<PortfolioView>(`/portfolios/${pid}`, { method: "PATCH", body: JSON.stringify(body) }),
+  listPlans: (pid: string) => request<RecurringPlan[]>(`/portfolios/${pid}/plans`),
+  createPlan: (pid: string, body: object) =>
+    request<RecurringPlan>(`/portfolios/${pid}/plans`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updatePlan: (pid: string, planId: string, body: object) =>
+    request<RecurringPlan>(`/portfolios/${pid}/plans/${planId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deletePlan: (pid: string, planId: string) =>
+    request<void>(`/portfolios/${pid}/plans/${planId}`, { method: "DELETE" }),
+  listWatchlists: () => request<WatchlistView[]>("/watchlists"),
+  createWatchlist: (name: string) =>
+    request<WatchlistView>("/watchlists", { method: "POST", body: JSON.stringify({ name }) }),
+  deleteWatchlist: (id: string) => request<void>(`/watchlists/${id}`, { method: "DELETE" }),
+  addWatchlistItem: (id: string, symbol: string) =>
+    request<WatchlistView>(`/watchlists/${id}/items`, {
+      method: "POST",
+      body: JSON.stringify({ symbol }),
+    }),
+  removeWatchlistItem: (id: string, symbol: string) =>
+    request<void>(`/watchlists/${id}/items/${symbol}`, { method: "DELETE" }),
+  valueHistory: (pid: string, range: string) =>
+    request<ValueHistory>(`/portfolios/${pid}/value-history?range=${range}`),
+  analytics: (pid: string, range: string) =>
+    request<Analytics>(`/portfolios/${pid}/analytics?range=${range}`),
+  exportUrl: (pid: string, format: string) => `${BASE}/portfolios/${pid}/export?format=${format}`,
 };
 
 export function fmtMoney(v: string | null | undefined, currency = "USD"): string {
