@@ -230,6 +230,106 @@ class WatchlistItem(Base):
     watchlist: Mapped[Watchlist] = relationship(back_populates="items")
 
 
+class RuleActionType(str, enum.Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+    REBALANCE = "REBALANCE"
+    NOTIFY = "NOTIFY"
+
+
+class AutomationRule(Base):
+    """User-defined automation: a JSON trigger AST plus one action. Evaluated
+    event-driven on price updates and on a schedule tick; never eval()'d code
+    (ARCHITECTURE.md §5)."""
+
+    __tablename__ = "automation_rules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(120))
+    trigger: Mapped[str] = mapped_column(Text)  # JSON AST
+    action_type: Mapped[RuleActionType] = mapped_column(Enum(RuleActionType))
+    action_params: Mapped[str] = mapped_column(Text, default="{}")  # JSON
+    enabled: Mapped[bool] = mapped_column(default=True)
+    cooldown_seconds: Mapped[int] = mapped_column(default=3600)
+    max_fires_per_day: Mapped[int] = mapped_column(default=5)
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fire_count: Mapped[int] = mapped_column(default=0)
+    armed: Mapped[bool] = mapped_column(default=True)  # edge-trigger state: re-arms when condition goes false
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    fires: Mapped[list["RuleFire"]] = relationship(
+        back_populates="rule", cascade="all, delete-orphan", order_by="RuleFire.fired_at.desc()"
+    )
+
+
+class RuleFire(Base):
+    __tablename__ = "rule_fires"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    rule_id: Mapped[str] = mapped_column(ForeignKey("automation_rules.id", ondelete="CASCADE"))
+    fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    result: Mapped[str] = mapped_column(String(20))  # EXECUTED | NOTIFIED | REJECTED | ERROR
+    detail: Mapped[str] = mapped_column(Text, default="")
+
+    rule: Mapped[AutomationRule] = relationship(back_populates="fires")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    type: Mapped[str] = mapped_column(String(40))  # order_filled | rule_fired | dividend | ...
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    portfolio_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    read: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class User(Base):
+    """Server-mode account. M3 supports a single admin; roles/multi-user in M6."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(80), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    role: Mapped[str] = mapped_column(String(20), default="admin")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ProviderCredential(Base):
+    """Encrypted-at-rest provider API keys (PRD §27). Values are Fernet
+    ciphertext; the key file lives in the data directory with 0600 perms."""
+
+    __tablename__ = "provider_credentials"
+
+    provider: Mapped[str] = mapped_column(String(40), primary_key=True)
+    encrypted_value: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    actor: Mapped[str] = mapped_column(String(80), default="local")
+    action: Mapped[str] = mapped_column(String(80))
+    entity: Mapped[str] = mapped_column(String(200), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AppliedCorporateAction(Base):
     """Idempotency record: which dividend/split events have already been
     applied to which portfolio."""

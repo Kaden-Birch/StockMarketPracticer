@@ -138,6 +138,44 @@ export interface Analytics {
   diversification: { score: number | null; weights: Record<string, number> };
 }
 
+export interface AutomationRuleView {
+  id: string;
+  portfolio_id: string;
+  name: string;
+  trigger: object;
+  action_type: "BUY" | "SELL" | "REBALANCE" | "NOTIFY";
+  action_params: Record<string, unknown>;
+  enabled: boolean;
+  cooldown_seconds: number;
+  max_fires_per_day: number;
+  last_fired_at: string | null;
+  fire_count: number;
+  created_at: string;
+}
+
+export interface RuleFireView {
+  id: string;
+  fired_at: string;
+  result: string;
+  detail: string;
+}
+
+export interface NotificationView {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  portfolio_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface AuthStatus {
+  mode: "disabled" | "required";
+  state: "authenticated" | "setup_required" | "login_required";
+  username?: string;
+}
+
 export interface CompareSeries {
   symbol: string;
   currency: string;
@@ -182,11 +220,18 @@ export interface SymbolMatch {
   type: string;
 }
 
+export class AuthRequiredError extends Error {}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...init,
   });
+  if (resp.status === 401) {
+    window.dispatchEvent(new Event("aiptp-auth-required"));
+    throw new AuthRequiredError("Authentication required");
+  }
   if (!resp.ok) {
     let detail = resp.statusText;
     try {
@@ -265,6 +310,60 @@ export const api = {
   analytics: (pid: string, range: string) =>
     request<Analytics>(`/portfolios/${pid}/analytics?range=${range}`),
   exportUrl: (pid: string, format: string) => `${BASE}/portfolios/${pid}/export?format=${format}`,
+  listRules: (pid: string) => request<AutomationRuleView[]>(`/portfolios/${pid}/rules`),
+  createRule: (pid: string, body: object) =>
+    request<AutomationRuleView>(`/portfolios/${pid}/rules`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateRule: (pid: string, ruleId: string, body: object) =>
+    request<AutomationRuleView>(`/portfolios/${pid}/rules/${ruleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteRule: (pid: string, ruleId: string) =>
+    request<void>(`/portfolios/${pid}/rules/${ruleId}`, { method: "DELETE" }),
+  ruleFires: (pid: string, ruleId: string) =>
+    request<RuleFireView[]>(`/portfolios/${pid}/rules/${ruleId}/fires`),
+  notifications: (unreadOnly = false) =>
+    request<{ unread_count: number; notifications: NotificationView[] }>(
+      `/notifications?unread_only=${unreadOnly}`,
+    ),
+  markNotificationsRead: (ids?: string[]) =>
+    request<{ ok: boolean }>("/notifications/read", {
+      method: "POST",
+      body: JSON.stringify(ids ?? null),
+    }),
+  authStatus: () => request<AuthStatus>("/auth/status"),
+  authSetup: (username: string, password: string) =>
+    request<{ username: string }>("/auth/setup", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  authLogin: (username: string, password: string) =>
+    request<{ username: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  authLogout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  adminProviders: () =>
+    request<{ stored_keys: string[]; active_chain: string[]; supported: string[] }>(
+      "/admin/providers",
+    ),
+  setProviderKey: (provider: string, key: string) =>
+    request<{ ok: boolean; note: string }>("/admin/providers", {
+      method: "PUT",
+      body: JSON.stringify({ provider, key }),
+    }),
+  deleteProviderKey: (provider: string) =>
+    request<void>(`/admin/providers/${provider}`, { method: "DELETE" }),
+  runBackup: () => request<{ backup: string }>("/admin/backup", { method: "POST" }),
+  listBackups: () =>
+    request<{ name: string; size_bytes: number; created_at: string }[]>("/admin/backups"),
+  auditLog: () =>
+    request<{ actor: string; action: string; entity: string; detail: string; created_at: string }[]>(
+      "/admin/audit",
+    ),
 };
 
 export function fmtMoney(v: string | null | undefined, currency = "USD"): string {

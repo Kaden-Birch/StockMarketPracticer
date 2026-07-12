@@ -1,0 +1,32 @@
+# AIPTP server deployment. One command from the repo root:
+#   docker compose -f deploy/compose.yaml up -d
+# or use the launcher: ./deploy/aiptp.sh up
+
+services:
+  aiptp:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: aiptp/server:latest
+    container_name: aiptp
+    ports:
+      - "${AIPTP_PORT:-8420}:8420"
+    environment:
+      AIPTP_AUTH: "required"          # first visit shows the admin setup screen
+      # AIPTP_MARKET_PROVIDERS: "yahoo,stooq"
+      # AIPTP_ALPHAVANTAGE_KEY: ""    # or store it encrypted via Settings UI
+      AIPTP_BACKUP_INTERVAL_HOURS: "24"
+    volumes:
+      - aiptp-data:/data              # DB, encrypted keys, backups
+    restart: unless-stopped
+    # GPU passthrough (uncomment for M4 local-AI inference on NVIDIA hosts):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  aiptp-data:

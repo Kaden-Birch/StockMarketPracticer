@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from decimal import Decimal
 
+from .automation.engine import run_rules
 from .core.events import EventBus
 from .marketdata.base import MarketDataError
 from .marketdata.service import MarketDataService
+from .notify.service import push_notification
 from .storage.models import Holding, Order, OrderStatus, Portfolio
 from .trading.engine import evaluate_pending_orders
 
@@ -25,7 +27,21 @@ def watched_symbols(session: Session) -> set[str]:
         select(Order.symbol).where(Order.status == OrderStatus.PENDING).distinct()
     ).all()
     held = session.scalars(select(Holding.symbol).where(Holding.quantity > 0).distinct()).all()
-    return set(pending) | set(held)
+    out = set(pending) | set(held)
+    # symbols referenced by enabled automation rules (event-driven triggers)
+    import json
+
+    from .automation.conditions import referenced_symbols
+    from .storage.models import AutomationRule
+
+    for trigger_json in session.scalars(
+        select(AutomationRule.trigger).where(AutomationRule.enabled == True)  # noqa: E712
+    ):
+        try:
+            out |= referenced_symbols(json.loads(trigger_json))
+        except (json.JSONDecodeError, ValueError, StopIteration):
+            continue
+    return out
 
 
 def run_watch_cycle(
@@ -74,6 +90,25 @@ def run_watch_cycle(
                 prices.pop(symbol, None)  # don't fill at a wrong rate
 
         fills = evaluate_pending_orders(session, prices, fx_rates, quote_currencies)
+
+        # Automation rules that reference these symbols (event-driven path)
+        previous_closes = {
+            s: q.previous_close for s, q in quotes.items() if q.previous_close
+        }
+        try:
+            run_rules(session, market, bus, prices=prices, previous_closes=previous_closes)
+        except Exception:
+            log.exception("Automation rule evaluation failed")
+
+        for txn in fills:
+            push_notification(
+                session,
+                bus,
+                type_="order_filled",
+                title=f"Order filled: {txn.side.value} {txn.quantity} {txn.symbol}",
+                body=f"Filled at {txn.price} ({txn.origin.value})",
+                portfolio_id=txn.portfolio_id,
+            )
         session.commit()
         for txn in fills:
             log.info("Filled order %s: %s %s %s @ %s",

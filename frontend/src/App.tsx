@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
+import AuthGate from "./components/AuthGate";
+import NotificationBell from "./components/NotificationBell";
 import AnalyticsPage from "./pages/Analytics";
+import AutomationPage from "./pages/Automation";
 import CompaniesPage from "./pages/Companies";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
 import PortfolioPage from "./pages/Portfolio";
+import SettingsPage from "./pages/Settings";
 import WatchlistsPage from "./pages/Watchlists";
 
 function useTheme(): [string, () => void] {
@@ -24,7 +28,7 @@ function useTheme(): [string, () => void] {
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   return (
-    <>
+    <AuthGate>
       <nav className="rail" aria-label="Primary">
         <div className="brand">AIPTP</div>
         <NavLink to="/" end>
@@ -33,7 +37,9 @@ export default function App() {
         <NavLink to="/companies">Companies</NavLink>
         <NavLink to="/watchlists">Watchlists</NavLink>
         <NavLink to="/compare">Compare</NavLink>
+        <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
+        <NotificationBell />
         <button className="ghost" onClick={toggleTheme}>
           {theme === "dark" ? "Light theme" : "Dark theme"}
         </button>
@@ -46,12 +52,14 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolios/:id" element={<PortfolioPage />} />
           <Route path="/portfolios/:id/analytics" element={<AnalyticsPage />} />
+          <Route path="/portfolios/:id/automation" element={<AutomationPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:symbol" element={<CompanyPage />} />
           <Route path="/watchlists" element={<WatchlistsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
-    </>
+    </AuthGate>
   );
 }

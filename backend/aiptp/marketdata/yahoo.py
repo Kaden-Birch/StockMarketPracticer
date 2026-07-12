@@ -42,7 +42,10 @@ class YahooProvider:
         params: dict[str, str] = {"range": range_, "interval": interval}
         if events:
             params["events"] = events
-        resp = self._client.get(f"/v8/finance/chart/{symbol}", params=params)
+        try:
+            resp = self._client.get(f"/v8/finance/chart/{symbol}", params=params)
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Yahoo unreachable: {exc}") from exc
         if resp.status_code == 404:
             raise SymbolNotFound(f"Unknown symbol: {symbol}")
         if resp.status_code != 200:
@@ -151,10 +154,13 @@ class YahooProvider:
         return Decimal(str(price)) * scale
 
     def search(self, query: str) -> list[SymbolMatch]:
-        resp = self._client.get(
-            "/v1/finance/search",
-            params={"q": query, "quotesCount": 10, "newsCount": 0, "listsCount": 0},
-        )
+        try:
+            resp = self._client.get(
+                "/v1/finance/search",
+                params={"q": query, "quotesCount": 10, "newsCount": 0, "listsCount": 0},
+            )
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Yahoo unreachable: {exc}") from exc
         if resp.status_code != 200:
             raise MarketDataError(f"Yahoo search API returned {resp.status_code}")
         matches = []

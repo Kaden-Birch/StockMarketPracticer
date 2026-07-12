@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Ordered failover chain; comma-separated: yahoo | stooq | alphavantage | fake
     market_providers: str = "yahoo,stooq"
     alphavantage_key: str = ""
+    auth: str = "disabled"  # disabled (desktop) | required (server)
+    backup_interval_hours: int = 24
+    frontend_dir: str = ""  # override for packaged deployments (Docker/desktop)
     watch_interval_seconds: int = 15
     quote_ttl_seconds: int = 15
     history_ttl_seconds: int = 600

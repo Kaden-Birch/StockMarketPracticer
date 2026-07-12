@@ -38,6 +38,26 @@ Playwright: `npm i playwright-core` in scratchpad, launch with
 `--no-sandbox`. Theme persists in localStorage key `aiptp-theme`; the toggle
 button label is the theme it switches TO.
 
+## Server mode / auth
+
+`AIPTP_AUTH=required` enables the login wall: `/auth/status` →
+setup_required → `POST /auth/setup {username, password≥8}` sets a cookie
+(curl: `-c/-b cookiejar`). All /api/v1 routes except auth/health then need
+the cookie; the WS checks it too.
+
+## Docker
+
+`dockerd` may need starting (`nohup dockerd &`). Build needs the sandbox
+proxy CA as a secret; run needs it mounted plus host networking to reach the
+proxy:
+
+```
+docker build --secret id=extra_ca,src=/root/.ccr/ca-bundle.crt -f deploy/Dockerfile -t aiptp/server .
+docker run -d --network host -e AIPTP_PORT=8426 \
+  -v /root/.ccr/ca-bundle.crt:/etc/aiptp/ca.crt:ro -e SSL_CERT_FILE=/etc/aiptp/ca.crt \
+  -e HTTPS_PROXY="$HTTPS_PROXY" aiptp/server
+```
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

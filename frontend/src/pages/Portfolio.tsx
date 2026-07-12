@@ -76,6 +76,9 @@ export default function PortfolioPage() {
         <Link to={`/portfolios/${id}/analytics`}>
           <button className="ghost" type="button">Analytics</button>
         </Link>
+        <Link to={`/portfolios/${id}/automation`}>
+          <button className="ghost" type="button">Automation</button>
+        </Link>
         <a href={api.exportUrl(id, "csv")} download>
           <button className="ghost" type="button">CSV</button>
         </a>

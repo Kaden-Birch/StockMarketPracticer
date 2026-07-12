@@ -31,9 +31,13 @@ class StooqProvider:
 
     def get_quotes(self, symbols: list[str]) -> dict[str, Quote]:
         joined = "+".join(_stooq_symbol(s) for s in symbols)
-        resp = self._client.get(
-            "https://stooq.com/q/l/", params={"s": joined, "f": "sd2t2ohlcv", "h": "", "e": "csv"}
-        )
+        try:
+            resp = self._client.get(
+                "https://stooq.com/q/l/",
+                params={"s": joined, "f": "sd2t2ohlcv", "h": "", "e": "csv"},
+            )
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Stooq unreachable: {exc}") from exc
         if resp.status_code != 200:
             raise MarketDataError(f"Stooq quote endpoint returned {resp.status_code}")
         out: dict[str, Quote] = {}
@@ -57,10 +61,13 @@ class StooqProvider:
         if interval not in ("1d", "1wk", "1mo"):
             raise MarketDataError("Stooq only provides daily/weekly/monthly history")
         stooq_interval = {"1d": "d", "1wk": "w", "1mo": "m"}[interval]
-        resp = self._client.get(
-            "https://stooq.com/q/d/l/",
-            params={"s": _stooq_symbol(symbol), "i": stooq_interval},
-        )
+        try:
+            resp = self._client.get(
+                "https://stooq.com/q/d/l/",
+                params={"s": _stooq_symbol(symbol), "i": stooq_interval},
+            )
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Stooq unreachable: {exc}") from exc
         if resp.status_code != 200 or resp.text.strip().lower().startswith("no data"):
             raise SymbolNotFound(f"No Stooq history for {symbol}")
         bars: list[Bar] = []

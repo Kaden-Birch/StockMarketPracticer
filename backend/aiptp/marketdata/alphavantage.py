@@ -26,7 +26,10 @@ class AlphaVantageProvider:
         self._client.close()
 
     def _get(self, params: dict) -> dict:
-        resp = self._client.get(_BASE, params={**params, "apikey": self._key})
+        try:
+            resp = self._client.get(_BASE, params={**params, "apikey": self._key})
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Alpha Vantage unreachable: {exc}") from exc
         if resp.status_code != 200:
             raise MarketDataError(f"Alpha Vantage returned {resp.status_code}")
         data = resp.json()

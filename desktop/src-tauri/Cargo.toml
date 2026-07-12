@@ -1,0 +1,17 @@
+[package]
+name = "aiptp-desktop"
+version = "0.3.0"
+description = "AI Paper Trading Platform desktop shell"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+
+[profile.release]
+lto = true
+strip = true

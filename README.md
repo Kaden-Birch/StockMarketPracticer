@@ -10,17 +10,27 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M2 — Full Trading & Portfolio Depth (working).** On top of the M1
-core (portfolios, lot-based cost accounting, market/limit/stop orders, price
-watcher, REST + WebSocket API, React UI), M2 adds: trailing stops,
-dollar-cost-averaging plans that execute 24/7, percent-of-cash/portfolio/
-position sizing, one-click rebalancing with preview, batch orders, real
-dividend and split application (with optional reinvestment), multi-currency
-fills at live FX rates, watchlists, company comparison, analytics (Sharpe,
-Sortino, beta, max drawdown, diversification, records), CSV/JSON/Markdown
-exports, chart event markers + SMA overlays with synchronized ranges, and a
-Yahoo→Stooq→Alpha Vantage provider failover chain. See
-[docs/ROADMAP.md](docs/ROADMAP.md) for what lands next.
+**Phase: M3 — Automation & Deployment (working).** On top of M1 (core
+trading engine, real market data, web UI) and M2 (trailing stops, DCA,
+rebalancing, dividends/splits, FX, watchlists, analytics, exports, provider
+failover), M3 adds:
+
+- **Automation rules**: a visual rule builder over a safe trigger AST —
+  price, % move, SMA/EMA/RSI indicators, cash, allocation, dividend events,
+  and UTC schedules, combined with ALL/ANY/NOT — driving buy/sell/notify
+  actions with edge-triggering, cooldowns, daily caps, and a full fire log.
+  Rules run 24/7 in server mode.
+- **Notifications**: in-app inbox, WebSocket push, optional browser/desktop
+  notifications.
+- **Security v1**: Argon2id login for server deployments (first-run admin
+  setup), encrypted-at-rest provider API keys, audit log, automatic daily
+  SQLite backups with retention.
+- **Deployment**: multi-stage Dockerfile with healthcheck, Compose file with
+  persistent volume, one-command launcher (`./deploy/aiptp.sh up`), corporate
+  proxy CA support, and a Tauri desktop shell scaffold with a CI installer
+  workflow. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what lands next (M4: local AI).
 
 ### Run it (development)
 
