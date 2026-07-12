@@ -278,6 +278,47 @@ class Recommendation(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Strategy(Base):
+    """Rule-based strategy (PRD §22): the automation trigger AST templated
+    with "$SYMBOL", applied to every symbol in the universe. Backtests share
+    the live evaluation and execution code paths."""
+
+    __tablename__ = "strategies"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    universe: Mapped[str] = mapped_column(Text)  # JSON list of symbols
+    entry_trigger: Mapped[str] = mapped_column(Text)  # JSON AST, $SYMBOL templated
+    exit_trigger: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entry_notional: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("1000"))
+    initial_cash: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("10000"))
+    benchmark: Mapped[str] = mapped_column(String(20), default="SPY")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class BacktestStatus(str, enum.Enum):
+    RUNNING = "RUNNING"
+    DONE = "DONE"
+    FAILED = "FAILED"
+
+
+class BacktestRun(Base):
+    __tablename__ = "backtest_runs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    strategy_id: Mapped[str] = mapped_column(ForeignKey("strategies.id", ondelete="CASCADE"))
+    range: Mapped[str] = mapped_column(String(8), default="1Y")
+    status: Mapped[BacktestStatus] = mapped_column(
+        Enum(BacktestStatus), default=BacktestStatus.RUNNING
+    )
+    progress_pct: Mapped[int] = mapped_column(default=0)
+    error: Mapped[str] = mapped_column(Text, default="")
+    results: Mapped[str] = mapped_column(Text, default="{}")  # JSON report
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AppSetting(Base):
     """Small global key/value store (e.g. default AI model)."""
 

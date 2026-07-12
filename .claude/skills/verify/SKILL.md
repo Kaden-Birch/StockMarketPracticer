@@ -69,6 +69,17 @@ erratic (placeholder echoes, repetition loops); the pipeline degrades
 safely (salvage parse, ungrounded suggestions dropped, no sizing = no
 trade), which is what to verify, not suggestion quality.
 
+## Strategies / backtests / what-if (M5)
+
+POST /strategies (entry/exit ASTs use "$SYMBOL" placeholders), then
+POST /strategies/{id}/backtest {"range":"2Y"} → 202 with run_id; poll
+GET /strategies/backtests/{run_id} until status != RUNNING (a real 2Y/4-symbol
+run takes ~10-30s; progress also streams on the WS). What-if:
+POST /portfolios/{id}/whatif {"scenario":{"type":"substitute"|"never_sold"|
+"adopt_ai"|"monthly_dca", ...}} — note same-day trades produce delta≈0 by
+design (scenarios re-date nothing; they need historical transactions to
+diverge).
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

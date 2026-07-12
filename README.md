@@ -10,7 +10,20 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M4 — Local AI (working).** The AI in AIPTP now runs entirely on
+**Phase: M5 — Strategies, Backtesting & What-If (working).** Build rule-based
+strategies (a symbol universe plus entry/exit conditions templated over each
+symbol — price, % move, RSI/SMA/EMA) and backtest them against real daily
+history through the exact same rule-evaluation and order/accounting engine
+used for live trading. Reports include the equity curve vs benchmark, win/loss
+stats, realized P&L, Sharpe/Sortino/beta/max drawdown, performance segmented
+by market regime (bull/bear/sideways), open positions, and the full trade
+log — with progress streamed while the run executes. The What-If simulator
+answers "what if I'd bought NVDA instead?", "what if I never sold?", "what if
+I followed every AI recommendation?", and "what if I'd invested monthly?" by
+replaying transformed copies of your transaction log against real historical
+prices, never touching the actual portfolio.
+
+Previously — **M4 (Local AI):** The AI in AIPTP now runs entirely on
 your hardware: a llama.cpp/GGUF model runtime with hardware detection and a
 curated model catalog (install/remove/benchmark/hot-switch, per-portfolio or
 global default), a **grounded** investment assistant that reasons only over

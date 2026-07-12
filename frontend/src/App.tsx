@@ -12,7 +12,9 @@ import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
 import PortfolioPage from "./pages/Portfolio";
 import SettingsPage from "./pages/Settings";
+import StrategiesPage from "./pages/Strategies";
 import WatchlistsPage from "./pages/Watchlists";
+import WhatIfPage from "./pages/WhatIf";
 
 function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState(
@@ -39,6 +41,7 @@ export default function App() {
         <NavLink to="/companies">Companies</NavLink>
         <NavLink to="/watchlists">Watchlists</NavLink>
         <NavLink to="/compare">Compare</NavLink>
+        <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/models">AI Models</NavLink>
         <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
@@ -57,7 +60,9 @@ export default function App() {
           <Route path="/portfolios/:id/analytics" element={<AnalyticsPage />} />
           <Route path="/portfolios/:id/automation" element={<AutomationPage />} />
           <Route path="/portfolios/:id/assistant" element={<AssistantPage />} />
+          <Route path="/portfolios/:id/whatif" element={<WhatIfPage />} />
           <Route path="/models" element={<ModelsPage />} />
+          <Route path="/strategies" element={<StrategiesPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:symbol" element={<CompanyPage />} />
           <Route path="/watchlists" element={<WatchlistsPage />} />

@@ -217,6 +217,66 @@ export interface AiSettings {
   ai_default_model: string;
 }
 
+export interface StrategyView {
+  id: string;
+  name: string;
+  description: string;
+  universe: string[];
+  entry_trigger: object;
+  exit_trigger: object | null;
+  entry_notional: string;
+  initial_cash: string;
+  benchmark: string;
+  created_at: string;
+}
+
+export interface BacktestResults {
+  days: number;
+  initial_cash: string;
+  final_value: number;
+  total_return_pct: number;
+  benchmark: string;
+  benchmark_return_pct: number;
+  trades: number;
+  closed_trades: number;
+  wins: number;
+  losses: number;
+  win_rate: number | null;
+  realized_pnl: string;
+  risk: { sharpe: number | null; sortino: number | null; beta: number | null;
+          volatility: number | null; max_drawdown: number | null };
+  by_regime: Record<string, { days: number; total_return_pct: number | null }>;
+  open_positions: { symbol: string; quantity: string; value: string }[];
+  trade_log: { date: string; side: string; symbol: string; quantity: string;
+               price: string; realized_pnl?: string }[];
+  equity_curve: { date: string; value: number; benchmark_close: number }[];
+}
+
+export interface BacktestRunView {
+  id: string;
+  strategy_id: string;
+  range: string;
+  status: "RUNNING" | "DONE" | "FAILED";
+  progress_pct: number;
+  error: string;
+  results: BacktestResults | Record<string, never>;
+  created_at: string;
+  finished_at: string | null;
+}
+
+export interface WhatIfResult {
+  description: string;
+  range: string;
+  currency: string;
+  actual_final: number;
+  hypothetical_final: number;
+  delta: number;
+  delta_pct: number | null;
+  actual_points: { date: string; value: number }[];
+  hypothetical_points: { date: string; value: number }[];
+  note: string;
+}
+
 export interface CompareSeries {
   symbol: string;
   currency: string;
@@ -443,6 +503,22 @@ export const api = {
   aiReject: (pid: string, recId: string) =>
     request<RecommendationView>(`/portfolios/${pid}/ai/recommendations/${recId}/reject`, {
       method: "POST",
+    }),
+  listStrategies: () => request<StrategyView[]>("/strategies"),
+  createStrategy: (body: object) =>
+    request<StrategyView>("/strategies", { method: "POST", body: JSON.stringify(body) }),
+  deleteStrategy: (id: string) => request<void>(`/strategies/${id}`, { method: "DELETE" }),
+  startBacktest: (id: string, range: string) =>
+    request<{ run_id: string }>(`/strategies/${id}/backtest`, {
+      method: "POST",
+      body: JSON.stringify({ range }),
+    }),
+  listBacktests: (id: string) => request<BacktestRunView[]>(`/strategies/${id}/backtests`),
+  getBacktest: (runId: string) => request<BacktestRunView>(`/strategies/backtests/${runId}`),
+  whatIf: (pid: string, scenario: object, range: string) =>
+    request<WhatIfResult>(`/portfolios/${pid}/whatif`, {
+      method: "POST",
+      body: JSON.stringify({ scenario, range }),
     }),
   aiSettings: (pid: string) => request<AiSettings>(`/portfolios/${pid}/ai/settings`),
   aiUpdateSettings: (pid: string, body: object) =>

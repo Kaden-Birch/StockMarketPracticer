@@ -23,6 +23,7 @@ from .api import (
     orders,
     plans,
     portfolios,
+    strategies,
     watchlists,
     ws,
 )
@@ -212,6 +213,8 @@ def create_app(
     app.include_router(automation.router, prefix=api_prefix)
     app.include_router(ai_api.router, prefix=api_prefix)
     app.include_router(ai_api.prouter, prefix=api_prefix)
+    app.include_router(strategies.router, prefix=api_prefix)
+    app.include_router(strategies.whatif_router, prefix=api_prefix)
     app.include_router(notifications.router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)

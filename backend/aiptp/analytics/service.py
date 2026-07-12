@@ -32,23 +32,19 @@ def _close_map(market: MarketDataService, symbol: str, range_: str) -> dict[str,
     return out
 
 
-def value_history(
-    session: Session,
-    portfolio: Portfolio,
+def replay_series(
+    txns: list,
+    starting_balance: Decimal,
     market: MarketDataService,
     range_: str = "1Y",
     benchmark: str = "SPY",
-) -> dict[str, Any]:
-    """Daily (trading-day) series of total portfolio value, plus the
-    benchmark's closes for the same dates."""
+    portfolio_currency: str = "USD",
+) -> list[dict[str, Any]]:
+    """Daily value series from ANY transaction-like list (objects with kind,
+    side, symbol, quantity, amount, executed_at). Shared by portfolio value
+    history and the what-if simulator's hypothetical replays."""
     yahoo_range = RANGE_TO_YAHOO.get(range_.upper(), "1y")
-    txns = session.scalars(
-        select(Transaction)
-        .where(Transaction.portfolio_id == portfolio.id)
-        .order_by(Transaction.executed_at)
-    ).all()
     symbols = sorted({t.symbol for t in txns})
-
     bench_closes = _close_map(market, benchmark, yahoo_range)
     days = sorted(bench_closes)
     closes: dict[str, dict[str, float]] = {}
@@ -57,14 +53,15 @@ def value_history(
         try:
             closes[s] = _close_map(market, s, yahoo_range)
             quote = market.get_quote(s)
-            fx_now[s] = market.get_fx_rate(quote.currency, portfolio.currency)
+            fx_now[s] = market.get_fx_rate(quote.currency, portfolio_currency)
         except MarketDataError:
             closes[s] = {}
             fx_now[s] = Decimal("1")
 
+    txns = sorted(txns, key=lambda t: t.executed_at.isoformat())
     points = []
     txn_idx = 0
-    cash = portfolio.starting_balance
+    cash = starting_balance
     qty: dict[str, Decimal] = {s: Decimal("0") for s in symbols}
     last_close: dict[str, float] = {}
     for day in days:
@@ -102,6 +99,27 @@ def value_history(
         total = float(cash + position_value)
         points.append({"date": day, "value": round(total, 2),
                        "benchmark_close": bench_closes[day]})
+    return points
+
+
+def value_history(
+    session: Session,
+    portfolio: Portfolio,
+    market: MarketDataService,
+    range_: str = "1Y",
+    benchmark: str = "SPY",
+) -> dict[str, Any]:
+    """Daily (trading-day) series of total portfolio value, plus the
+    benchmark's closes for the same dates."""
+    txns = session.scalars(
+        select(Transaction)
+        .where(Transaction.portfolio_id == portfolio.id)
+        .order_by(Transaction.executed_at)
+    ).all()
+    points = replay_series(
+        list(txns), portfolio.starting_balance, market, range_, benchmark,
+        portfolio.currency,
+    )
     return {
         "portfolio_id": portfolio.id,
         "range": range_.upper(),
