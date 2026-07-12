@@ -10,8 +10,30 @@ executing real trades.
 
 ## Project Status
 
-**Phase: Design.** This repository currently contains the product and technical
-design documentation that will drive implementation.
+**Phase: M1 — Core Simulation Foundation (working).** The first runnable
+version is here: a FastAPI trading server with real Yahoo Finance market data,
+portfolios with lot-based FIFO/LIFO/Average cost accounting, market / limit /
+stop / stop-limit orders, a background price watcher that fills pending orders,
+a REST + WebSocket API, and a React web UI with interactive price charts and
+light/dark themes. See [docs/ROADMAP.md](docs/ROADMAP.md) for what lands next.
+
+### Run it (development)
+
+```bash
+# Backend (Python 3.11+)
+python3 -m venv .venv
+.venv/bin/pip install -e "backend[dev]"
+
+# Frontend (Node 20+) — the server serves the built UI
+cd frontend && npm install && npm run build && cd ..
+
+# Start — open http://127.0.0.1:8420
+.venv/bin/aiptp
+```
+
+Data is stored in `./data/aiptp.db` (SQLite). Configuration via `AIPTP_*`
+environment variables (`AIPTP_PORT`, `AIPTP_DATA_DIR`, …). Run the tests with
+`cd backend && ../.venv/bin/python -m pytest`.
 
 | Document | Purpose |
 | --- | --- |
@@ -41,17 +63,17 @@ cross-platform · Highly scalable · Modular · Extensible · Offline-capable wh
 practical · Server-capable for continuous operation · GPU accelerated whenever
 possible · Approachable for beginners, deep enough for experts.
 
-## Repository Layout (planned)
+## Repository Layout
 
 ```
 docs/          Product and technical design documentation
-backend/       Core application server (API, simulation, automation, AI)
-frontend/      Web UI (also embedded by the desktop shell)
-desktop/       Desktop shell wrapping the backend + frontend
-deploy/        Docker, Compose, and deployment tooling
+backend/       Core application server (API, simulation, market data, watcher)
+frontend/      Web UI (served by the backend when built)
+desktop/       Desktop shell wrapping the backend + frontend   (M3)
+deploy/        Docker, Compose, and deployment tooling         (M3)
 ```
 
 ## Contributing
 
-Implementation has not started yet. Design feedback is welcome — open an issue
-against the documents in `docs/`.
+Design feedback and issues are welcome — the documents in `docs/` are the
+source of truth for scope and architecture.
