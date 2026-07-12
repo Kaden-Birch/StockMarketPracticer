@@ -11,8 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
+from .ai.manager import ModelManager
 from .api import (
     admin,
+    ai as ai_api,
     analytics,
     auth as auth_api,
     automation,
@@ -96,12 +98,17 @@ def build_market(cfg: Settings, session_factory=None) -> MarketDataService:
     )
 
 
-def create_app(cfg: Settings | None = None, market: MarketDataService | None = None) -> FastAPI:
+def create_app(
+    cfg: Settings | None = None,
+    market: MarketDataService | None = None,
+    model_manager: ModelManager | None = None,
+) -> FastAPI:
     cfg = cfg or settings
     engine = make_engine(cfg.resolved_db_url())
     Base.metadata.create_all(engine)
     session_factory = make_session_factory(engine)
     market = market or build_market(cfg, session_factory)
+    model_manager = model_manager or ModelManager(cfg.data_dir / "models")
     bus = EventBus()
 
     @asynccontextmanager
@@ -161,6 +168,7 @@ def create_app(cfg: Settings | None = None, market: MarketDataService | None = N
     app.state.market = market
     app.state.bus = bus
     app.state.settings = cfg
+    app.state.model_manager = model_manager
 
     app.add_middleware(
         CORSMiddleware,
@@ -202,6 +210,8 @@ def create_app(cfg: Settings | None = None, market: MarketDataService | None = N
     app.include_router(watchlists.router, prefix=api_prefix)
     app.include_router(analytics.router, prefix=api_prefix)
     app.include_router(automation.router, prefix=api_prefix)
+    app.include_router(ai_api.router, prefix=api_prefix)
+    app.include_router(ai_api.prouter, prefix=api_prefix)
     app.include_router(notifications.router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)

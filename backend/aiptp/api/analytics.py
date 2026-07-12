@@ -7,8 +7,8 @@ from ..analytics.service import diversification, risk_metrics, trade_records, va
 from ..marketdata.base import MarketDataError
 from ..marketdata.service import MarketDataService
 from ..portfolio.service import value_portfolio
-from ..reports.export import to_csv, to_json, to_markdown
-from ..storage.models import Transaction
+from ..reports.export import to_csv, to_json, to_markdown, to_pdf, to_xlsx
+from ..storage.models import Recommendation, Transaction
 from .deps import get_db, get_market, get_portfolio_or_404
 
 router = APIRouter(prefix="/portfolios/{portfolio_id}", tags=["analytics"])
@@ -95,4 +95,21 @@ def export_portfolio(
             media_type="text/markdown",
             headers={"Content-Disposition": f'attachment; filename="{safe_name}.md"'},
         )
-    raise HTTPException(status_code=422, detail="format must be csv, json, or md")
+    recs = session.scalars(
+        select(Recommendation)
+        .where(Recommendation.portfolio_id == portfolio_id)
+        .order_by(Recommendation.created_at.desc())
+    ).all()
+    if fmt == "xlsx":
+        return Response(
+            to_xlsx(view, txns, analytics, recs),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}.xlsx"'},
+        )
+    if fmt == "pdf":
+        return Response(
+            to_pdf(view, txns, analytics, recs),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}.pdf"'},
+        )
+    raise HTTPException(status_code=422, detail="format must be csv, json, md, xlsx, or pdf")

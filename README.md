@@ -10,7 +10,21 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M3 — Automation & Deployment (working).** On top of M1 (core
+**Phase: M4 — Local AI (working).** The AI in AIPTP now runs entirely on
+your hardware: a llama.cpp/GGUF model runtime with hardware detection and a
+curated model catalog (install/remove/benchmark/hot-switch, per-portfolio or
+global default), a **grounded** investment assistant that reasons only over
+your real portfolio data and real market data (structured JSON output,
+ungrounded suggestions dropped, every recommendation stored with a frozen
+snapshot of its inputs), and AI-assisted trading with a review queue —
+approve/reject each suggestion, or opt into auto-execution bounded by hard
+guardrails (max notional per trade, max trades/day). Every AI trade is
+permanently marked AI_ASSISTED/AI_AUTO. Reports now export to PDF and XLSX
+including AI recommendation history. Install the inference runtime with
+`pip install "./backend[ai]"` (builds llama.cpp; needs cmake + a C compiler);
+without it, everything else runs and AI pages report the runtime as absent.
+
+Previously — **M3 (Automation & Deployment):** On top of M1 (core
 trading engine, real market data, web UI) and M2 (trailing stops, DCA,
 rebalancing, dividends/splits, FX, watchlists, analytics, exports, provider
 failover), M3 adds:

@@ -58,6 +58,17 @@ docker run -d --network host -e AIPTP_PORT=8426 \
   -e HTTPS_PROXY="$HTTPS_PROXY" aiptp/server
 ```
 
+## Local AI (M4)
+
+llama-cpp-python is an optional extra (`pip install -e "backend[dev,ai]"`,
+source build ~10 min). Smallest real model: `qwen2.5-0.5b-instruct-q4`
+(469MB, POST /ai/models/{id}/install downloads from HF through the proxy,
+then /load, /benchmark ≈24 tok/s on 4 CPU cores). Analyze takes 1-2 min on
+CPU. Tests use FakeRuntime — no model needed. 0.5B output quality is
+erratic (placeholder echoes, repetition loops); the pipeline degrades
+safely (salvage parse, ungrounded suggestions dropped, no sizing = no
+trade), which is what to verify, not suggestion quality.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

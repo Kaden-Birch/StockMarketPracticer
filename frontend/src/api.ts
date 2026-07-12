@@ -176,6 +176,47 @@ export interface AuthStatus {
   username?: string;
 }
 
+export interface ModelView {
+  id: string;
+  name: string;
+  version: string;
+  parameters: string;
+  quantization: string;
+  disk_gb: number;
+  min_ram_gb: number;
+  recommended_ram_gb: number;
+  gpu_vram_gb: number;
+  est_speed: string;
+  features: string[];
+  installed: boolean;
+  loaded: boolean;
+  hardware_fit: "fits" | "marginal" | "too_large" | "unknown";
+  download: { done: number; total: number } | null;
+}
+
+export interface RecommendationView {
+  id: string;
+  model_id: string;
+  action: "BUY" | "SELL" | "HOLD";
+  symbol: string;
+  sizing: { notional?: string };
+  rationale: string;
+  confidence: string | null;
+  analysis: string;
+  expected_impact: Record<string, string | null>;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "EXECUTED";
+  executed_order_id: string | null;
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface AiSettings {
+  ai_auto_execute: boolean;
+  ai_max_trade_notional: string;
+  ai_max_trades_per_day: number;
+  ai_default_model: string;
+}
+
 export interface CompareSeries {
   symbol: string;
   currency: string;
@@ -364,6 +405,51 @@ export const api = {
     request<{ actor: string; action: string; entity: string; detail: string; created_at: string }[]>(
       "/admin/audit",
     ),
+  aiHardware: () =>
+    request<{ cpu_count: number; ram_gb: number | null; gpus: { name: string; vram: string }[];
+              runtime_available: boolean; runtime_kind: string }>("/ai/hardware"),
+  aiModels: () =>
+    request<{ models: ModelView[]; loaded: string | null; default_model: string;
+              disclaimer: string }>("/ai/models"),
+  aiInstall: (modelId: string) =>
+    request<{ status: string }>(`/ai/models/${modelId}/install`, { method: "POST" }),
+  aiRemove: (modelId: string) => request<void>(`/ai/models/${modelId}`, { method: "DELETE" }),
+  aiLoad: (modelId: string) =>
+    request<{ loaded: string }>(`/ai/models/${modelId}/load`, { method: "POST" }),
+  aiBenchmark: (modelId: string) =>
+    request<{ elapsed_seconds: number; completion_tokens: number;
+              tokens_per_second: number | null }>(`/ai/models/${modelId}/benchmark`, {
+      method: "POST",
+    }),
+  aiSetDefault: (modelId: string) =>
+    request<{ default_model: string }>("/ai/default-model", {
+      method: "PUT",
+      body: JSON.stringify({ model_id: modelId }),
+    }),
+  aiAnalyze: (pid: string, modelId?: string) =>
+    request<{ model_id: string; analysis: string; disclaimer: string;
+              recommendations: RecommendationView[]; dropped_ungrounded: number;
+              auto_executed: { status: string; reason?: string }[] }>(
+      `/portfolios/${pid}/ai/analyze`,
+      { method: "POST", body: JSON.stringify({ model_id: modelId ?? null }) },
+    ),
+  aiRecommendations: (pid: string) =>
+    request<RecommendationView[]>(`/portfolios/${pid}/ai/recommendations`),
+  aiApprove: (pid: string, recId: string) =>
+    request<{ recommendation: RecommendationView; outcome: { status: string; reason?: string } | null }>(
+      `/portfolios/${pid}/ai/recommendations/${recId}/approve`,
+      { method: "POST" },
+    ),
+  aiReject: (pid: string, recId: string) =>
+    request<RecommendationView>(`/portfolios/${pid}/ai/recommendations/${recId}/reject`, {
+      method: "POST",
+    }),
+  aiSettings: (pid: string) => request<AiSettings>(`/portfolios/${pid}/ai/settings`),
+  aiUpdateSettings: (pid: string, body: object) =>
+    request<AiSettings>(`/portfolios/${pid}/ai/settings`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 };
 
 export function fmtMoney(v: string | null | undefined, currency = "USD"): string {

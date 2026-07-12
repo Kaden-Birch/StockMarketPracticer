@@ -203,8 +203,16 @@ def test_exports(client, fake_provider, portfolio_id):
     assert "# Portfolio report" in md_resp.text
     assert "| AAPL |" in md_resp.text
 
+    xlsx = client.get(f"/api/v1/portfolios/{portfolio_id}/export?format=xlsx")
+    assert xlsx.status_code == 200
+    assert xlsx.content[:2] == b"PK"  # zip container
+
+    pdf = client.get(f"/api/v1/portfolios/{portfolio_id}/export?format=pdf")
+    assert pdf.status_code == 200
+    assert pdf.content[:5] == b"%PDF-"
+
     assert client.get(
-        f"/api/v1/portfolios/{portfolio_id}/export?format=xlsx"
+        f"/api/v1/portfolios/{portfolio_id}/export?format=docx"
     ).status_code == 422
 
 

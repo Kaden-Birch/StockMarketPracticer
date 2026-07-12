@@ -3,7 +3,9 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import AuthGate from "./components/AuthGate";
 import NotificationBell from "./components/NotificationBell";
 import AnalyticsPage from "./pages/Analytics";
+import AssistantPage from "./pages/Assistant";
 import AutomationPage from "./pages/Automation";
+import ModelsPage from "./pages/Models";
 import CompaniesPage from "./pages/Companies";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
@@ -37,6 +39,7 @@ export default function App() {
         <NavLink to="/companies">Companies</NavLink>
         <NavLink to="/watchlists">Watchlists</NavLink>
         <NavLink to="/compare">Compare</NavLink>
+        <NavLink to="/models">AI Models</NavLink>
         <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
         <NotificationBell />
@@ -53,6 +56,8 @@ export default function App() {
           <Route path="/portfolios/:id" element={<PortfolioPage />} />
           <Route path="/portfolios/:id/analytics" element={<AnalyticsPage />} />
           <Route path="/portfolios/:id/automation" element={<AutomationPage />} />
+          <Route path="/portfolios/:id/assistant" element={<AssistantPage />} />
+          <Route path="/models" element={<ModelsPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:symbol" element={<CompanyPage />} />
           <Route path="/watchlists" element={<WatchlistsPage />} />

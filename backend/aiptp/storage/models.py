@@ -87,6 +87,14 @@ class Portfolio(Base):
         Enum(CostBasisMethod), default=CostBasisMethod.FIFO
     )
     dividend_reinvest: Mapped[bool] = mapped_column(default=False)
+    # AI-assisted trading settings (PRD §17): auto-execution is opt-in and
+    # bounded by hard guardrails.
+    ai_auto_execute: Mapped[bool] = mapped_column(default=False)
+    ai_max_trade_notional: Mapped[Decimal] = mapped_column(
+        DecimalStr, default=Decimal("1000")
+    )
+    ai_max_trades_per_day: Mapped[int] = mapped_column(default=3)
+    ai_default_model: Mapped[str] = mapped_column(String(80), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -228,6 +236,55 @@ class WatchlistItem(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     watchlist: Mapped[Watchlist] = relationship(back_populates="items")
+
+
+class RecommendationStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+    EXECUTED = "EXECUTED"
+
+
+class RecommendationAction(str, enum.Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+    HOLD = "HOLD"
+
+
+class Recommendation(Base):
+    """An AI suggestion, permanently explainable: inputs_snapshot freezes the
+    exact data the model saw (PRD §16), and executed trades are forever
+    marked AI_ASSISTED/AI_AUTO through the order origin (PRD §17)."""
+
+    __tablename__ = "recommendations"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    model_id: Mapped[str] = mapped_column(String(80))
+    action: Mapped[RecommendationAction] = mapped_column(Enum(RecommendationAction))
+    symbol: Mapped[str] = mapped_column(String(20), default="")
+    sizing: Mapped[str] = mapped_column(Text, default="{}")  # {"notional": "..."} etc.
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    confidence: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)  # 0-1
+    analysis: Mapped[str] = mapped_column(Text, default="")  # full analysis text
+    inputs_snapshot: Mapped[str] = mapped_column(Text, default="{}")  # JSON context pack
+    expected_impact: Mapped[str] = mapped_column(Text, default="{}")  # deterministic JSON
+    status: Mapped[RecommendationStatus] = mapped_column(
+        Enum(RecommendationStatus), default=RecommendationStatus.PENDING
+    )
+    executed_order_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AppSetting(Base):
+    """Small global key/value store (e.g. default AI model)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
 
 
 class RuleActionType(str, enum.Enum):
