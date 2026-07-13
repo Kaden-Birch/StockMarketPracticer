@@ -23,6 +23,8 @@ export interface PortfolioView {
   cost_basis_method: string;
   dividend_reinvest: boolean;
   mode: string;
+  owner: string;
+  public_on_leaderboard: boolean;
   game_xp: number;
   created_at: string;
   holdings: HoldingView[];
@@ -396,6 +398,146 @@ export interface SymbolMatch {
   type: string;
 }
 
+export interface CompetitionView {
+  id: string;
+  name: string;
+  description: string;
+  kind: "PUBLIC" | "PRIVATE";
+  scoring: "RETURN" | "RISK_ADJUSTED" | "DIVERSIFICATION";
+  starting_balance: string;
+  created_by: string;
+  entries: number;
+  joined: boolean;
+  invite_code?: string;
+  ends_at: string | null;
+  created_at: string;
+}
+
+export interface StandingRow {
+  rank: number;
+  display_name: string;
+  score: number | null;
+  return_pct: number | null;
+  total_value: string;
+  is_me: boolean;
+}
+
+export interface MemberView {
+  username: string;
+  role: "MANAGER" | "MEMBER" | "VIEWER";
+  added_at?: string;
+}
+
+export interface ProposalView {
+  id: string;
+  proposer: string;
+  symbol: string;
+  side: "BUY" | "SELL";
+  quantity: string | null;
+  notional: string | null;
+  rationale: string;
+  status: "OPEN" | "EXECUTED" | "REJECTED" | "FAILED";
+  detail: string;
+  votes: Record<string, boolean>;
+  approvals: number;
+  rejections: number;
+  eligible_voters: number;
+  executed_order_id: string | null;
+  created_at: string;
+}
+
+export interface ClubSummary {
+  id: string;
+  name: string;
+  description: string;
+  club_portfolio_id: string | null;
+  created_at: string;
+}
+
+export interface ClubView extends ClubSummary {
+  created_by: string;
+  invite_code?: string;
+  members: MemberView[];
+}
+
+export interface ClubMessageView {
+  id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export interface ClubRankRow {
+  rank: number;
+  username: string;
+  role: string;
+  best_return_pct: number | null;
+}
+
+export interface ShareLinkView {
+  token: string;
+  kind: "portfolio" | "strategy";
+  target_id: string;
+  revoked: boolean;
+  created_at: string;
+}
+
+export interface SharedPortfolioView {
+  kind: "portfolio";
+  name: string;
+  currency: string;
+  mode: string;
+  created_at: string;
+  starting_balance: string;
+  total_value: string;
+  lifetime_return: string;
+  total_return_pct: string | null;
+  day_change: string;
+  holdings: { symbol: string; quantity: string; market_value: string | null }[];
+}
+
+export interface SharedStrategyView {
+  kind: "strategy";
+  name: string;
+  description: string;
+  universe: string[];
+  entry_trigger: object;
+  exit_trigger: object | null;
+  entry_notional: string;
+  benchmark: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  portfolio: string;
+  owner: string;
+  mode: string;
+  score: number;
+  label: string;
+  is_me: boolean;
+}
+
+export interface LeaderboardCategory {
+  id: string;
+  name: string;
+  entries: LeaderboardEntry[];
+}
+
+export interface DiscordConfigView {
+  webhook_configured: boolean;
+  bot_token_configured: boolean;
+  gateway_available: boolean;
+  events: string[];
+  available_events: string[];
+  commands: Record<string, string>;
+}
+
+export interface UserView {
+  username: string;
+  role: string;
+  created_at: string;
+}
+
 export class AuthRequiredError extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -629,6 +771,86 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  // ---- M7: community, sharing, leaderboards, discord ----
+  listCompetitions: () => request<CompetitionView[]>("/competitions"),
+  createCompetition: (body: object) =>
+    request<CompetitionView>("/competitions", { method: "POST", body: JSON.stringify(body) }),
+  joinCompetition: (id: string, inviteCode: string, displayName: string) =>
+    request<{ portfolio_id: string }>(`/competitions/${id}/join`, {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode, display_name: displayName }),
+    }),
+  standings: (id: string) =>
+    request<{ competition: CompetitionView; standings: StandingRow[] }>(
+      `/competitions/${id}/standings`,
+    ),
+  listMembers: (pid: string) =>
+    request<{ owner: string; members: MemberView[] }>(`/portfolios/${pid}/members`),
+  addMember: (pid: string, username: string, role: string) =>
+    request<MemberView>(`/portfolios/${pid}/members`, {
+      method: "POST",
+      body: JSON.stringify({ username, role }),
+    }),
+  removeMember: (pid: string, username: string) =>
+    request<void>(`/portfolios/${pid}/members/${username}`, { method: "DELETE" }),
+  listProposals: (pid: string) => request<ProposalView[]>(`/portfolios/${pid}/proposals`),
+  createProposal: (pid: string, body: object) =>
+    request<ProposalView>(`/portfolios/${pid}/proposals`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  voteProposal: (pid: string, proposalId: string, approve: boolean) =>
+    request<ProposalView>(`/portfolios/${pid}/proposals/${proposalId}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ approve }),
+    }),
+  listClubs: () => request<ClubSummary[]>("/clubs"),
+  createClub: (body: object) =>
+    request<ClubView>("/clubs", { method: "POST", body: JSON.stringify(body) }),
+  joinClub: (inviteCode: string) =>
+    request<{ id: string; name: string }>("/clubs/join", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode }),
+    }),
+  clubDetail: (id: string) => request<ClubView>(`/clubs/${id}`),
+  deleteClub: (id: string) => request<void>(`/clubs/${id}`, { method: "DELETE" }),
+  clubMessages: (id: string) => request<ClubMessageView[]>(`/clubs/${id}/messages`),
+  postClubMessage: (id: string, body: string) =>
+    request<ClubMessageView>(`/clubs/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
+  clubRankings: (id: string) => request<ClubRankRow[]>(`/clubs/${id}/rankings`),
+  leaveClub: (id: string, username: string) =>
+    request<void>(`/clubs/${id}/members/${username}`, { method: "DELETE" }),
+  sharePortfolio: (pid: string) =>
+    request<{ token: string; url: string }>(`/shares/portfolios/${pid}`, { method: "POST" }),
+  shareStrategy: (sid: string) =>
+    request<{ token: string; url: string }>(`/shares/strategies/${sid}`, { method: "POST" }),
+  listShares: () => request<ShareLinkView[]>("/shares"),
+  revokeShare: (token: string) => request<void>(`/shares/${token}`, { method: "DELETE" }),
+  sharedView: (token: string) =>
+    request<SharedPortfolioView | SharedStrategyView>(`/shared/${token}`),
+  importSharedStrategy: (token: string) =>
+    request<{ id: string; name: string }>(`/shares/${token}/import`, { method: "POST" }),
+  leaderboards: () => request<{ categories: LeaderboardCategory[] }>("/leaderboards"),
+  discordConfig: () => request<DiscordConfigView>("/discord/config"),
+  setDiscordConfig: (body: object) =>
+    request<{ ok: boolean; note: string }>("/discord/config", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  discordTest: () => request<{ ok: boolean }>("/discord/test", { method: "POST" }),
+  discordPreview: (command: string, arg = "") =>
+    request<{ command: string; reply: string }>("/discord/commands/preview", {
+      method: "POST",
+      body: JSON.stringify({ command, arg }),
+    }),
+  listUsers: () => request<UserView[]>("/admin/users"),
+  createUser: (body: object) =>
+    request<UserView>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
+  deleteUser: (username: string) =>
+    request<void>(`/admin/users/${username}`, { method: "DELETE" }),
 };
 
 export function fmtMoney(v: string | null | undefined, currency = "USD"): string {

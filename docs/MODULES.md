@@ -73,6 +73,9 @@ are active.
 | `gamification` | — | ReadPortfolio, ReadHistorical | achievement, challenge, level_up | — |
 | `ai_mentor` | — | Read/ModifyPortfolio, AccessAIModels | ai_analysis | — |
 | `reporting` | — | ReadPortfolio, ReadHistorical | — | — |
+| `multiplayer` | — | Read/ModifyPortfolio, AccessMultiplayer | order_filled | — |
+| `leaderboards` | — | ReadPortfolio, ReadHistorical | — | — |
+| `discord` | notifications | ReadPortfolio, SendNotifications | — | order_filled, achievement, challenge, level_up, ai_analysis, competition |
 
 Each contributes UI (nav items / portfolio tabs / settings pages) that the
 frontend renders only when the module is running.

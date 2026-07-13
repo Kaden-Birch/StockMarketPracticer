@@ -1,5 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, ModuleView } from "../api";
+import DiscordCard from "../components/DiscordCard";
+import UsersCard from "../components/UsersCard";
 
 export default function SettingsPage() {
   const [providers, setProviders] = useState<{ stored_keys: string[]; active_chain: string[] } | null>(null);
@@ -127,6 +129,9 @@ export default function SettingsPage() {
           )}
         </form>
       </div>
+
+      <DiscordCard />
+      <UsersCard />
 
       <div className="card">
         <h2>Backups</h2>

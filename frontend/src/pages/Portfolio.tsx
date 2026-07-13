@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, fmtMoney, Order, pnlClass, PortfolioView, Txn } from "../api";
+import CommunityCard from "../components/CommunityCard";
 import GameCard from "../components/GameCard";
 import OrderTicket from "../components/OrderTicket";
 import PlansCard from "../components/PlansCard";
 import RebalanceCard from "../components/RebalanceCard";
 import { useEvents } from "../hooks/useEvents";
+import { useModules } from "../hooks/useModules";
 
 export default function PortfolioPage() {
   const { id = "" } = useParams();
@@ -14,6 +16,8 @@ export default function PortfolioPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [txns, setTxns] = useState<Txn[]>([]);
   const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const { running } = useModules();
 
   const refresh = useCallback(() => {
     Promise.all([api.getPortfolio(id), api.listOrders(id), api.listTransactions(id)])
@@ -55,6 +59,23 @@ export default function PortfolioPage() {
     if (!portfolio) return;
     await api.updatePortfolio(id, { dividend_reinvest: !portfolio.dividend_reinvest });
     refresh();
+  }
+
+  async function toggleLeaderboard() {
+    if (!portfolio) return;
+    await api.updatePortfolio(id, { public_on_leaderboard: !portfolio.public_on_leaderboard });
+    refresh();
+  }
+
+  async function share() {
+    try {
+      const link = await api.sharePortfolio(id);
+      const url = `${window.location.origin}/shared/${link.token}`;
+      setShareUrl(url);
+      await navigator.clipboard?.writeText(url).catch(() => undefined);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   async function remove() {
@@ -99,7 +120,23 @@ export default function PortfolioPage() {
           title="Automatically reinvest cash dividends into the paying stock">
           Dividend reinvest: {portfolio.dividend_reinvest ? "ON" : "OFF"}
         </button>
+        <button className="ghost" type="button" onClick={share}
+          title="Create a public read-only link (anonymous — no owner or cash shown)">
+          Share
+        </button>
+        {running("leaderboards") && (
+          <button className="ghost" type="button" onClick={toggleLeaderboard}
+            title="Opt this portfolio into the public leaderboards">
+            Leaderboard: {portfolio.public_on_leaderboard ? "PUBLIC" : "PRIVATE"}
+          </button>
+        )}
       </div>
+      {shareUrl && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          Read-only link (copied): <code>{shareUrl}</code>{" "}
+          <button className="ghost" onClick={() => setShareUrl("")}>Dismiss</button>
+        </p>
+      )}
       <div style={{ height: 12 }} />
       {portfolio.quote_errors.length > 0 && (
         <div className="error">Some quotes unavailable: {portfolio.quote_errors.join("; ")}</div>
@@ -194,6 +231,7 @@ export default function PortfolioPage() {
         </div>
       )}
       <GameCard portfolioId={id} mode={portfolio.mode} />
+      {running("multiplayer") && <CommunityCard portfolioId={id} onTraded={refresh} />}
       <OrderTicket portfolioId={id} onPlaced={refresh} />
       {error && <div className="error">{error}</div>}
       <PlansCard portfolioId={id} currency={portfolio.currency} />

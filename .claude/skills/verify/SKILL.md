@@ -103,6 +103,30 @@ publisher calls push_notification directly; mid-transaction publishers pass
 `session=` to avoid the SQLite self-deadlock. AI runtime via
 `AIPTP_AI_RUNTIME=llama|openai|fake`.
 
+## Multiplayer / community (M7)
+
+Current user is a ContextVar set by the auth middleware (`local`/admin in
+desktop mode). Access = owner ∪ portfolio members ∪ admin; denials are 404
+(never 403 — existence must not leak). Flows: POST /competitions (PRIVATE →
+`invite_code` in the create/creator responses only) → /join creates a fresh
+game portfolio at the competition's starting balance → /standings.
+POST /portfolios/{id}/members {username, role MANAGER|MEMBER|VIEWER};
+proposals: POST /portfolios/{id}/proposals (proposer auto-votes yes; a solo
+owner auto-executes) → /vote; majority = floor(n/2)+1 of owner+managers+
+members. Clubs: POST /clubs {with_portfolio} → join by invite code also adds
+PortfolioMember on the club portfolio. Shares: POST /shares/portfolios/{id}
+→ GET /api/v1/shared/{token} is auth-exempt and anonymized (no owner/cash);
+DELETE revokes → 404. Leaderboards opt-in via PATCH portfolio
+{public_on_leaderboard:true}; **cache is 5 min** — call
+`aiptp.api.leaderboards.invalidate_cache()` in tests (also cleared on every
+app boot). Discord: PUT /discord/config stores webhook/token encrypted;
+POST /discord/commands/preview runs the same handlers the gateway bot uses
+(the gateway itself needs optional discord.py — not verifiable here).
+Multi-user testing: one TestClient per user against the same `app` object
+(cookies are per-client); the first /auth/setup account is admin, then
+POST /admin/users creates traders. Trigger ASTs are single-key nodes:
+`{"price": {"symbol": "$SYMBOL", "op": "<", "value": 90}}`.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

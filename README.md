@@ -10,7 +10,21 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M6.11 — Modular Platform Architecture (working).** The app was
+**Phase: M7 — Multiplayer, Community & External Integrations (working).**
+Multi-user server mode with per-portfolio ownership and membership (owners,
+managers, members, viewers), admin-managed accounts, competitions where every
+entrant starts a fresh game portfolio at the same balance (scored by return,
+risk-adjusted return, or diversification), cooperative portfolios whose trade
+proposals execute through the normal order path on a majority vote, investment
+clubs with discussion boards, shared club portfolios and member rankings,
+six opt-in leaderboard categories, revocable anonymous read-only share links
+for portfolios and importable strategies, and a Discord integration
+(configured entirely in Settings) with webhook notifications, slash-command
+handlers, and automatic role suggestions. All of it ships as three new
+optional modules — `multiplayer`, `leaderboards`, and `discord` (which
+cascade-disables with `notifications`).
+
+Previously — **M6.11 (Modular Platform Architecture):** The app was
 refactored into a small Core Platform (trading, market data, portfolios,
 analytics, AI model manager, auth, storage) plus optional feature **modules**
 (notifications, automation, gamification, AI mentor, reporting) that register

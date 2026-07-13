@@ -177,6 +177,7 @@ export default function StrategiesPage() {
   const [run, setRun] = useState<BacktestRunView | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
   const pollRef = useRef<number>();
 
   // builder
@@ -248,6 +249,12 @@ export default function StrategiesPage() {
     <div>
       <h1>Strategies</h1>
       {error && <div className="error">{error}</div>}
+      {shareUrl && (
+        <p className="muted">
+          Read-only link (copied): <code>{shareUrl}</code>{" "}
+          <button className="ghost" onClick={() => setShareUrl("")}>Dismiss</button>
+        </p>
+      )}
 
       <div className="card">
         <h2>Your strategies</h2>
@@ -266,6 +273,19 @@ export default function StrategiesPage() {
             </select>
             <button disabled={running} onClick={() => backtest(s.id)}>
               {running ? "Running…" : "Backtest"}
+            </button>
+            <button className="ghost" title="Create a public read-only link others can import from"
+              onClick={async () => {
+                try {
+                  const link = await api.shareStrategy(s.id);
+                  const url = `${window.location.origin}/shared/${link.token}`;
+                  setShareUrl(url);
+                  await navigator.clipboard?.writeText(url).catch(() => undefined);
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}>
+              Share
             </button>
             <button className="ghost"
               onClick={async () => {

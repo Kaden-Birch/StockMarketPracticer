@@ -8,10 +8,12 @@ import AssistantPage from "./pages/Assistant";
 import AutomationPage from "./pages/Automation";
 import ModelsPage from "./pages/Models";
 import ProfilePage from "./pages/Profile";
+import CommunityPage from "./pages/Community";
 import CompaniesPage from "./pages/Companies";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
+import SharedPage from "./pages/Shared";
 import PortfolioPage from "./pages/Portfolio";
 import SettingsPage from "./pages/Settings";
 import StrategiesPage from "./pages/Strategies";
@@ -34,6 +36,15 @@ function useTheme(): [string, () => void] {
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const { running } = useModules();
+  // Public share links render outside the auth gate — the backend endpoint
+  // is auth-exempt and the payload is anonymized (roadmap 7.6).
+  if (window.location.pathname.startsWith("/shared/")) {
+    return (
+      <Routes>
+        <Route path="/shared/:token" element={<SharedPage />} />
+      </Routes>
+    );
+  }
   return (
     <AuthGate>
       <nav className="rail" aria-label="Primary">
@@ -47,6 +58,9 @@ export default function App() {
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/models">AI Models</NavLink>
         {running("gamification") && <NavLink to="/profile">Profile</NavLink>}
+        {(running("multiplayer") || running("leaderboards")) && (
+          <NavLink to="/community">Community</NavLink>
+        )}
         <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
         <NotificationBell />
@@ -72,6 +86,7 @@ export default function App() {
           <Route path="/companies/:symbol" element={<CompanyPage />} />
           <Route path="/watchlists" element={<WatchlistsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/community" element={<CommunityPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
