@@ -84,6 +84,10 @@ class Portfolio(Base):
     __tablename__ = "portfolios"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    # Multi-user ownership (M7): "local" in desktop mode; a username in
+    # server mode. Access = owner, portfolio member, or admin.
+    owner: Mapped[str] = mapped_column(String(80), default="local")
+    public_on_leaderboard: Mapped[bool] = mapped_column(default=False)
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str] = mapped_column(Text, default="")
     currency: Mapped[str] = mapped_column(String(8), default="USD")
@@ -395,6 +399,158 @@ class ChallengeAssignment(Base):
         Enum(ChallengeStatus), default=ChallengeStatus.ACTIVE
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MemberRole(str, enum.Enum):
+    MANAGER = "MANAGER"
+    MEMBER = "MEMBER"
+    VIEWER = "VIEWER"
+
+
+class PortfolioMember(Base):
+    """Cooperative portfolios (roadmap 7.2): additional users with a role.
+    Managers and members vote on trade proposals; viewers watch."""
+
+    __tablename__ = "portfolio_members"
+    __table_args__ = (
+        Index("ix_portfolio_member_unique", "portfolio_id", "username", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    username: Mapped[str] = mapped_column(String(80))
+    role: Mapped[MemberRole] = mapped_column(Enum(MemberRole), default=MemberRole.MEMBER)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProposalStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    EXECUTED = "EXECUTED"
+    REJECTED = "REJECTED"
+    FAILED = "FAILED"
+
+
+class TradeProposal(Base):
+    """Shared-decision trading (roadmap 7.2): a proposed market order that
+    executes automatically once a majority of voters approve."""
+
+    __tablename__ = "trade_proposals"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    proposer: Mapped[str] = mapped_column(String(80))
+    symbol: Mapped[str] = mapped_column(String(20))
+    side: Mapped[OrderSide] = mapped_column(Enum(OrderSide))
+    quantity: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    notional: Mapped[Decimal | None] = mapped_column(DecimalStr, nullable=True)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    votes: Mapped[str] = mapped_column(Text, default="{}")  # {username: true/false}
+    status: Mapped[ProposalStatus] = mapped_column(
+        Enum(ProposalStatus), default=ProposalStatus.OPEN
+    )
+    detail: Mapped[str] = mapped_column(Text, default="")
+    executed_order_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompetitionKind(str, enum.Enum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"  # invite code — also covers friend/classroom games
+
+
+class CompetitionScoring(str, enum.Enum):
+    RETURN = "RETURN"
+    RISK_ADJUSTED = "RISK_ADJUSTED"
+    DIVERSIFICATION = "DIVERSIFICATION"
+
+
+class Competition(Base):
+    """Multiplayer games (roadmap 7.1-7.2): every entrant gets a fresh game
+    portfolio with the same starting balance; standings rank by the chosen
+    scoring."""
+
+    __tablename__ = "competitions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    kind: Mapped[CompetitionKind] = mapped_column(
+        Enum(CompetitionKind), default=CompetitionKind.PUBLIC
+    )
+    scoring: Mapped[CompetitionScoring] = mapped_column(
+        Enum(CompetitionScoring), default=CompetitionScoring.RETURN
+    )
+    starting_balance: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("100000"))
+    invite_code: Mapped[str] = mapped_column(String(12), default="")
+    created_by: Mapped[str] = mapped_column(String(80), default="local")
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CompetitionEntry(Base):
+    __tablename__ = "competition_entries"
+    __table_args__ = (
+        Index("ix_competition_entry_unique", "competition_id", "username", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    competition_id: Mapped[str] = mapped_column(
+        ForeignKey("competitions.id", ondelete="CASCADE")
+    )
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    username: Mapped[str] = mapped_column(String(80))
+    display_name: Mapped[str] = mapped_column(String(80), default="")
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Club(Base):
+    """Investment clubs (roadmap 7.4)."""
+
+    __tablename__ = "clubs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    invite_code: Mapped[str] = mapped_column(String(12))
+    created_by: Mapped[str] = mapped_column(String(80), default="local")
+    club_portfolio_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ClubMember(Base):
+    __tablename__ = "club_members"
+    __table_args__ = (Index("ix_club_member_unique", "club_id", "username", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    club_id: Mapped[str] = mapped_column(ForeignKey("clubs.id", ondelete="CASCADE"))
+    username: Mapped[str] = mapped_column(String(80))
+    role: Mapped[MemberRole] = mapped_column(Enum(MemberRole), default=MemberRole.MEMBER)
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ClubMessage(Base):
+    __tablename__ = "club_messages"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    club_id: Mapped[str] = mapped_column(ForeignKey("clubs.id", ondelete="CASCADE"))
+    author: Mapped[str] = mapped_column(String(80))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ShareLink(Base):
+    """Read-only sharing (roadmap 7.6): random-token URLs exposing a
+    portfolio snapshot or a strategy definition, revocable."""
+
+    __tablename__ = "share_links"
+
+    token: Mapped[str] = mapped_column(String(48), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16))  # portfolio | strategy
+    target_id: Mapped[str] = mapped_column(String(32))
+    created_by: Mapped[str] = mapped_column(String(80), default="local")
+    revoked: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

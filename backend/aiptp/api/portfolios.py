@@ -29,7 +29,10 @@ def create_portfolio(
     session: Session = Depends(get_db),
     market: MarketDataService = Depends(get_market),
 ):
+    from ..core.currentuser import current_username
+
     portfolio = Portfolio(
+        owner=current_username(),
         name=body.name,
         description=body.description,
         currency=body.currency,
@@ -51,7 +54,19 @@ def list_portfolios(
     session: Session = Depends(get_db),
     market: MarketDataService = Depends(get_market),
 ):
-    portfolios = session.scalars(select(Portfolio).order_by(Portfolio.created_at)).all()
+    from ..core.currentuser import LOCAL_USER, current_username, is_admin
+    from ..storage.models import PortfolioMember
+
+    user = current_username()
+    query = select(Portfolio).order_by(Portfolio.created_at)
+    if not is_admin():
+        member_ids = select(PortfolioMember.portfolio_id).where(
+            PortfolioMember.username == user
+        )
+        query = query.where(
+            (Portfolio.owner.in_([user, LOCAL_USER])) | (Portfolio.id.in_(member_ids))
+        )
+    portfolios = session.scalars(query).all()
     return [value_portfolio(p, market) for p in portfolios]
 
 

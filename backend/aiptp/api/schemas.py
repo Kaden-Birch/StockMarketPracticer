@@ -39,6 +39,8 @@ class PortfolioUpdate(BaseModel):
     notes: str | None = None
     cost_basis_method: CostBasisMethod | None = None
     dividend_reinvest: bool | None = None
+    # Leaderboards are strictly opt-in (roadmap 7.3 / PRD privacy).
+    public_on_leaderboard: bool | None = None
 
 
 class OrderCreate(BaseModel):

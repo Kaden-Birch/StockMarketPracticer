@@ -3,13 +3,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..core.currentuser import current_username
+from ..security import auth as auth_service
 from ..security import credentials
 from ..security.audit import audit
 from ..security.backup import backup_database, list_backups
-from ..storage.models import AuditLog, ProviderCredential
-from .deps import get_db
+from ..storage.models import AuditLog, ProviderCredential, User
+from .deps import get_db, require_admin
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 SUPPORTED_PROVIDERS = {"alphavantage"}
 
@@ -65,6 +67,45 @@ def run_backup(request: Request, session: Session = Depends(get_db)):
 @router.get("/backups")
 def backups(request: Request):
     return list_backups(request.app.state.settings.data_dir)
+
+
+class NewUser(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    password: str = Field(min_length=8, max_length=200)
+    role: str = Field(default="trader", pattern="^(admin|trader|viewer)$")
+
+
+@router.get("/users")
+def list_users(session: Session = Depends(get_db)):
+    """Server-mode accounts (roadmap 7.1: admin invites players)."""
+    rows = session.scalars(select(User).order_by(User.created_at)).all()
+    return [
+        {"username": u.username, "role": u.role, "created_at": u.created_at.isoformat()}
+        for u in rows
+    ]
+
+
+@router.post("/users", status_code=201)
+def create_user(body: NewUser, session: Session = Depends(get_db)):
+    if session.scalar(select(User.id).where(User.username == body.username.strip())):
+        raise HTTPException(status_code=409, detail="Username already taken")
+    user = auth_service.create_user(session, body.username, body.password, role=body.role)
+    audit(session, current_username(), "admin.user_created",
+          f"{user.username} ({user.role})")
+    session.commit()
+    return {"username": user.username, "role": user.role}
+
+
+@router.delete("/users/{username}", status_code=204)
+def delete_user(username: str, session: Session = Depends(get_db)):
+    if username == current_username():
+        raise HTTPException(status_code=422, detail="You cannot delete your own account")
+    user = session.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    session.delete(user)
+    audit(session, current_username(), "admin.user_deleted", username)
+    session.commit()
 
 
 @router.get("/audit")

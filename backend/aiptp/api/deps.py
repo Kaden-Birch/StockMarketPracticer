@@ -25,10 +25,40 @@ def get_bus(request: Request) -> EventBus:
 
 
 def get_portfolio_or_404(session: Session, portfolio_id: str) -> Portfolio:
+    """Fetch a portfolio the current user may access: owner, member of the
+    (cooperative) portfolio, admin, or any pre-multi-user 'local' portfolio.
+    Non-members get a 404, not a 403 — existence is not leaked."""
+    from sqlalchemy import select
+
+    from ..core.currentuser import LOCAL_USER, current_username, is_admin
+    from ..storage.models import PortfolioMember
+
     portfolio = session.get(Portfolio, portfolio_id)
     if portfolio is None:
         raise HTTPException(status_code=404, detail="Portfolio not found")
-    return portfolio
+    user = current_username()
+    if (
+        portfolio.owner in (user, LOCAL_USER)
+        or is_admin()
+        or session.scalar(
+            select(PortfolioMember.id).where(
+                PortfolioMember.portfolio_id == portfolio_id,
+                PortfolioMember.username == user,
+            )
+        )
+        is not None
+    ):
+        return portfolio
+    raise HTTPException(status_code=404, detail="Portfolio not found")
+
+
+def require_admin() -> None:
+    """Route dependency: admin-only endpoints (user management, provider
+    keys, backups). In desktop mode the local user is implicitly admin."""
+    from ..core.currentuser import is_admin
+
+    if not is_admin():
+        raise HTTPException(status_code=403, detail="Admin access required")
 
 
 def require_module(module_id: str):

@@ -21,6 +21,7 @@ from .api import (
     modules as modules_api,
     orders,
     portfolios,
+    sharing,
     strategies,
     watchlists,
     ws,
@@ -192,10 +193,14 @@ def create_app(
 
     # Session-cookie auth for server mode. Public: auth endpoints, health,
     # and the static frontend (which needs to render the login screen).
-    AUTH_EXEMPT_PREFIXES = ("/api/v1/auth/", "/api/v1/health")
+    # /shared/{token} is public by design (roadmap 7.6 read-only links).
+    AUTH_EXEMPT_PREFIXES = ("/api/v1/auth/", "/api/v1/health", "/api/v1/shared/")
 
     @app.middleware("http")
     async def auth_middleware(request, call_next):
+        from .core.currentuser import LOCAL_USER, set_current_user
+
+        set_current_user(LOCAL_USER, "admin")  # desktop-mode default
         if cfg.auth == "required" and request.url.path.startswith("/api/v1"):
             if not request.url.path.startswith(AUTH_EXEMPT_PREFIXES):
                 token = request.cookies.get(auth_service.SESSION_COOKIE)
@@ -212,6 +217,7 @@ def create_app(
                     )
                 request.state.user = user
                 request.state.username = user.username
+                set_current_user(user.username, user.role)
         return await call_next(request)
 
     # ---- Core Platform routers (roadmap 6.11.1) ----
@@ -226,6 +232,8 @@ def create_app(
     app.include_router(strategies.whatif_router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)
+    app.include_router(sharing.router, prefix=api_prefix)
+    app.include_router(sharing.public_router, prefix=api_prefix)
     app.include_router(modules_api.router, prefix=api_prefix)
     app.include_router(marketdata.router, prefix=api_prefix)
     app.include_router(ws.router, prefix=api_prefix)
