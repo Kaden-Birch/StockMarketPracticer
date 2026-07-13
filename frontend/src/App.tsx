@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import AuthGate from "./components/AuthGate";
 import NotificationBell from "./components/NotificationBell";
+import { useModules } from "./hooks/useModules";
 import AnalyticsPage from "./pages/Analytics";
 import AssistantPage from "./pages/Assistant";
 import AutomationPage from "./pages/Automation";
@@ -32,6 +33,7 @@ function useTheme(): [string, () => void] {
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
+  const { running } = useModules();
   return (
     <AuthGate>
       <nav className="rail" aria-label="Primary">
@@ -44,7 +46,7 @@ export default function App() {
         <NavLink to="/compare">Compare</NavLink>
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/models">AI Models</NavLink>
-        <NavLink to="/profile">Profile</NavLink>
+        {running("gamification") && <NavLink to="/profile">Profile</NavLink>}
         <NavLink to="/settings">Settings</NavLink>
         <div className="spacer" />
         <NotificationBell />

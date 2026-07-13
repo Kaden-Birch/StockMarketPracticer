@@ -11,11 +11,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from decimal import Decimal
 
-from .automation.engine import run_rules
 from .core.events import EventBus
 from .marketdata.base import MarketDataError
 from .marketdata.service import MarketDataService
-from .notify.service import push_notification
 from .storage.models import Holding, Order, OrderStatus, Portfolio
 from .trading.engine import evaluate_pending_orders
 
@@ -90,26 +88,21 @@ def run_watch_cycle(
                 prices.pop(symbol, None)  # don't fill at a wrong rate
 
         fills = evaluate_pending_orders(session, prices, fx_rates, quote_currencies)
-
-        # Automation rules that reference these symbols (event-driven path)
-        previous_closes = {
-            s: q.previous_close for s, q in quotes.items() if q.previous_close
-        }
-        try:
-            run_rules(session, market, bus, prices=prices, previous_closes=previous_closes)
-        except Exception:
-            log.exception("Automation rule evaluation failed")
-
-        for txn in fills:
-            push_notification(
-                session,
-                bus,
-                type_="order_filled",
-                title=f"Order filled: {txn.side.value} {txn.quantity} {txn.symbol}",
-                body=f"Filled at {txn.price} ({txn.origin.value})",
-                portfolio_id=txn.portfolio_id,
-            )
         session.commit()
+
+        # Modules (automation, ...) react to this instead of being called
+        # directly — the core publishes, subscribers decide (roadmap 6.11.4).
+        bus.publish(
+            "watch.quotes",
+            {
+                "prices": {s: str(p) for s, p in prices.items()},
+                "previous_closes": {
+                    s: str(q.previous_close)
+                    for s, q in quotes.items()
+                    if q.previous_close
+                },
+            },
+        )
         for txn in fills:
             log.info("Filled order %s: %s %s %s @ %s",
                      txn.order_id, txn.side.value, txn.quantity, txn.symbol, txn.price)

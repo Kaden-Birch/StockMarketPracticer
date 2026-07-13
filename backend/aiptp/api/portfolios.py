@@ -37,6 +37,7 @@ def create_portfolio(
         cash_balance=body.starting_balance,
         cost_basis_method=body.cost_basis_method,
         mode=body.mode,
+        preset=body.preset,
         ends_at=body.ends_at,
         notes=body.notes,
     )

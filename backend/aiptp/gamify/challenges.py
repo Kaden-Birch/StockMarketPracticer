@@ -10,7 +10,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..marketdata.base import MarketDataError
-from ..notify.service import push_notification
 from ..storage.models import (
     BacktestRun,
     BacktestStatus,
@@ -185,11 +184,13 @@ def evaluate_challenges(session: Session, market, bus) -> int:
             assignment.completed_at = now
             award(session, bus, "challenge", f"challenge:{challenge.id}",
                   challenge.xp, f"Challenge: {challenge.name}")
-            push_notification(
-                session, bus, type_="challenge",
-                title=f"Challenge complete: {challenge.name}",
-                body=f"{challenge.description} (+{challenge.xp} XP)",
-            )
+            if bus is not None:
+                bus.publish(
+                    "challenge",
+                    {"id": challenge.id, "name": challenge.name,
+                     "description": f"{challenge.description} (+{challenge.xp} XP)"},
+                    session=session,
+                )
             completed += 1
     return completed
 

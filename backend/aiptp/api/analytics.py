@@ -12,6 +12,8 @@ from ..storage.models import Recommendation, Transaction
 from .deps import get_db, get_market, get_portfolio_or_404
 
 router = APIRouter(prefix="/portfolios/{portfolio_id}", tags=["analytics"])
+# Exports are owned by the Reporting module (roadmap 6.11.2).
+export_router = APIRouter(prefix="/portfolios/{portfolio_id}", tags=["reporting"])
 
 
 @router.get("/value-history")
@@ -52,7 +54,7 @@ def get_analytics(
     }
 
 
-@router.get("/export")
+@export_router.get("/export")
 def export_portfolio(
     portfolio_id: str,
     format: str = "csv",

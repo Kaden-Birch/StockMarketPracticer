@@ -22,6 +22,9 @@ from .deps import get_bus, get_db, get_market, get_portfolio_or_404
 
 router = APIRouter(prefix="/gamify", tags=["gamification"])
 prouter = APIRouter(prefix="/portfolios/{portfolio_id}", tags=["gamification"])
+# The learning coach ships with the AI Mentor module, not gamification —
+# Learning-preset portfolios keep it (roadmap 6.11.5).
+coach_router = APIRouter(prefix="/portfolios/{portfolio_id}", tags=["coach"])
 
 
 class ProfileUpdate(BaseModel):
@@ -136,7 +139,7 @@ def portfolio_report_card(
         raise HTTPException(status_code=503, detail=str(exc))
 
 
-@prouter.get("/coach")
+@coach_router.get("/coach")
 def portfolio_coach(
     portfolio_id: str,
     session: Session = Depends(get_db),

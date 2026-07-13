@@ -10,7 +10,21 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M6 — Gamification, Progression & Learning (working).** A permanent
+**Phase: M6.11 — Modular Platform Architecture (working).** The app was
+refactored into a small Core Platform (trading, market data, portfolios,
+analytics, AI model manager, auth, storage) plus optional feature **modules**
+(notifications, automation, gamification, AI mentor, reporting) that register
+themselves at startup and communicate only through an event bus. A Module
+Manager validates dependencies, isolates failures (a crashing module never
+takes down the app), and cascades disables. Every portfolio has an
+**experience preset** (Academy/Learning/Professional) that gates which modules
+act on it, and the UI assembles its navigation and tabs from the running-module
+set. AI runtimes (llama.cpp / OpenAI-compatible / Ollama) and notification
+channels (Discord/Slack/webhook) are pluggable behind one interface each. Adding
+a feature now means adding a module, not editing the core. See
+[docs/MODULES.md](docs/MODULES.md).
+
+Previously — **M6 (Gamification, Progression & Learning):** A permanent
 investor profile with categorized XP (education, research, portfolio,
 challenges — never trading volume), levels and a cosmetic title ladder from
 Beginner Investor to Legendary Investor. Every portfolio is an independent

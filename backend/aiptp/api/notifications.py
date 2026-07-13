@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from ..storage.models import Notification
+from ..notify.channels import FORMAT_KEY, WEBHOOK_PROVIDER, send_to_channels
+from ..security import credentials
+from ..storage.models import AppSetting, Notification
 from .deps import get_db
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+# Channel (external provider) configuration — part of the Notifications
+# module's settings surface (roadmap 6.11.10, 6.11.14).
+channels_router = APIRouter(prefix="/notifications/channels", tags=["notifications"])
 
 
 def _view(n: Notification) -> dict:
@@ -41,3 +47,58 @@ def mark_read(ids: list[str] | None = None, session: Session = Depends(get_db)):
     session.execute(stmt)
     session.commit()
     return {"ok": True}
+
+
+class WebhookConfig(BaseModel):
+    url: str | None = None  # None/"" clears
+    format: str = "generic"  # discord | slack | generic
+
+
+@channels_router.get("")
+def get_channels(request: Request, session: Session = Depends(get_db)):
+    """Report configured external channels without leaking the secret URL."""
+    has_url = credentials.load_key(
+        session, request.app.state.settings.data_dir, WEBHOOK_PROVIDER
+    ) is not None
+    fmt = session.get(AppSetting, FORMAT_KEY)
+    return {
+        "webhook": {"configured": has_url, "format": fmt.value if fmt else "generic"},
+        "available": ["discord", "slack", "generic"],
+    }
+
+
+@channels_router.put("/webhook")
+def set_webhook(
+    body: WebhookConfig, request: Request, session: Session = Depends(get_db)
+):
+    data_dir = request.app.state.settings.data_dir
+    if body.url:
+        credentials.store_key(session, data_dir, WEBHOOK_PROVIDER, body.url)
+    else:
+        credentials.delete_key(session, WEBHOOK_PROVIDER)
+    fmt = session.get(AppSetting, FORMAT_KEY)
+    if fmt is None:
+        fmt = AppSetting(key=FORMAT_KEY)
+        session.add(fmt)
+    fmt.value = body.format
+    session.commit()
+    return {"configured": bool(body.url), "format": body.format}
+
+
+@channels_router.post("/webhook/test")
+def test_webhook(request: Request):
+    """Send a test message through the configured channel."""
+    from ..core.modules import AppContext
+
+    ctx = AppContext(
+        app=request.app,
+        session_factory=request.app.state.session_factory,
+        market=request.app.state.market,
+        bus=request.app.state.bus,
+        settings=request.app.state.settings,
+        model_manager=request.app.state.model_manager,
+        scheduler_jobs=[],
+    )
+    send_to_channels(ctx, "AIPTP test notification",
+                     "If you can see this, your webhook channel works.")
+    return {"sent": True, "note": "Best-effort — check your channel."}

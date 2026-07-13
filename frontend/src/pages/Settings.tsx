@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import { api, ModuleView } from "../api";
 
 export default function SettingsPage() {
   const [providers, setProviders] = useState<{ stored_keys: string[]; active_chain: string[] } | null>(null);
@@ -7,13 +7,29 @@ export default function SettingsPage() {
   const [note, setNote] = useState("");
   const [backups, setBackups] = useState<{ name: string; size_bytes: number; created_at: string }[]>([]);
   const [audit, setAudit] = useState<{ actor: string; action: string; entity: string; created_at: string }[]>([]);
+  const [modules, setModules] = useState<ModuleView[]>([]);
   const [error, setError] = useState("");
 
   const refresh = useCallback(() => {
     api.adminProviders().then(setProviders).catch((e: Error) => setError(e.message));
     api.listBackups().then(setBackups).catch(() => undefined);
     api.auditLog().then(setAudit).catch(() => undefined);
+    api.modules().then((r) => setModules(r.modules)).catch(() => undefined);
   }, []);
+
+  async function toggleModule(m: ModuleView) {
+    setError("");
+    try {
+      const res = await api.setModule(m.id, m.state !== "RUNNING");
+      const affected = res.dependents_affected.length
+        ? ` Dependent modules also affected: ${res.dependents_affected.join(", ")}.`
+        : "";
+      setNote(`${m.name} will be ${m.state === "RUNNING" ? "disabled" : "enabled"} ${res.applies}.${affected}`);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   useEffect(refresh, [refresh]);
 
   async function saveKey(e: FormEvent) {
@@ -46,6 +62,45 @@ export default function SettingsPage() {
       <h1>Settings</h1>
       {error && <div className="error">{error}</div>}
       {note && <div className="card" style={{ borderColor: "var(--gain)" }}>{note}</div>}
+
+      <div className="card">
+        <h2>Modules</h2>
+        <p className="muted">
+          Optional features run as independent modules. Disabling one removes its
+          tabs, API routes, and background jobs on the next restart; the core trading
+          engine is unaffected. Modules that depend on a disabled one auto-disable.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Module</th><th>Version</th><th>Depends on</th><th>State</th><th></th></tr>
+          </thead>
+          <tbody>
+            {modules.map((m) => (
+              <tr key={m.id}>
+                <td>
+                  <strong>{m.name}</strong>
+                  <div className="muted">{m.description}</div>
+                  {m.error && <div className="error">Failed to start: {m.error.split("\n")[0]}</div>}
+                  {m.disabled_reason && <div className="muted">{m.disabled_reason}</div>}
+                </td>
+                <td className="muted">{m.version}</td>
+                <td className="muted">{m.dependencies.join(", ") || "—"}</td>
+                <td>
+                  <span className={`badge ${m.state === "RUNNING" ? "FILLED" : m.state === "FAILED" ? "REJECTED" : "CANCELLED"}`}>
+                    {m.state}
+                  </span>
+                  {m.pending_change && <div className="muted" style={{ fontSize: 11 }}>{m.pending_change}</div>}
+                </td>
+                <td>
+                  <button className="ghost" onClick={() => toggleModule(m)}>
+                    {m.state === "RUNNING" ? "Disable" : "Enable"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="card">
         <h2>Market data providers</h2>

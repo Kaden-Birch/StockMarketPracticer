@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     auth: str = "disabled"  # disabled (desktop) | required (server)
     backup_interval_hours: int = 24
     frontend_dir: str = ""  # override for packaged deployments (Docker/desktop)
+    # AI runtime provider (roadmap 6.11.13): llama (local GGUF) or openai
+    # (any OpenAI-compatible endpoint: Ollama, LM Studio, hosted APIs).
+    ai_runtime: str = "llama"
+    ai_base_url: str = "http://127.0.0.1:11434"  # Ollama default
+    ai_api_key: str = ""
     watch_interval_seconds: int = 15
     quote_ttl_seconds: int = 15
     history_ttl_seconds: int = 600

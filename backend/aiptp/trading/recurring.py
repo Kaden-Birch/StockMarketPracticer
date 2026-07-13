@@ -87,6 +87,7 @@ def run_due_plans(session: Session, market: MarketDataService, bus=None) -> int:
                     "quantity": str(txn.quantity),
                     "price": str(txn.price),
                 },
+                session=session,
             )
     return executed
 

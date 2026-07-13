@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from ..analytics.indicators import compute_indicator
 from ..marketdata.base import MarketDataError
 from ..marketdata.service import MarketDataService
-from ..notify.service import push_notification
 from ..portfolio.service import value_portfolio
 from ..storage.models import (
     AutomationRule,
@@ -231,14 +230,13 @@ def run_rules(
         rule.last_fired_at = now
         rule.fire_count += 1
         session.add(RuleFire(rule_id=rule.id, result=result, detail=detail))
-        push_notification(
-            session,
-            bus,
-            type_="rule_fired",
-            title=f"Automation: {rule.name} — {result}",
-            body=detail,
-            portfolio_id=portfolio.id,
-        )
+        if bus is not None:
+            bus.publish(
+                "rule_fired",
+                {"rule_id": rule.id, "rule_name": rule.name, "result": result,
+                 "detail": detail, "portfolio_id": portfolio.id},
+                session=session,
+            )
         fired += 1
         # refresh cached view after a trade so later rules see updated state
         if result == "EXECUTED":

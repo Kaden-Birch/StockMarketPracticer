@@ -235,6 +235,7 @@ def analyze_portfolio(
             "ai_analysis",
             {"portfolio_id": portfolio.id, "model_id": model_id,
              "recommendations": len(recommendations)},
+            session=session,
         )
     return {
         "model_id": model_id,

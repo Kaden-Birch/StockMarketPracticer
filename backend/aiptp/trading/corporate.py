@@ -210,5 +210,6 @@ def run_corporate_actions_cycle(session_factory, market: MarketDataService, bus)
                                 "amount": str(txn.amount),
                                 "quantity": str(txn.quantity),
                             },
+                            session=session,
                         )
         session.commit()

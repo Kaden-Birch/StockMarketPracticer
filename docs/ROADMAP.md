@@ -423,6 +423,207 @@ Examples:
 
 "Would you like to learn about diversification?"
 
+M6.11 — Modular Platform Architecture & Experience Framework
+
+Goal
+
+Refactor the application into a modular, plugin-oriented architecture that separates the core trading engine from optional functionality.
+
+This milestone establishes the long-term foundation for every future feature by allowing systems such as gamification, AI mentoring, multiplayer, notifications, Discord integration, and educational content to operate as independent modules that can be enabled, disabled, or extended without modifying the application's core logic.
+
+M6.11 must be completed before M7 begins.
+
+Design Goals
+
+The architecture should prioritize:
+
+Modularity
+Extensibility
+Cross-platform compatibility
+Maintainability
+Scalability
+Testability
+Performance
+
+Future milestones should primarily involve creating new modules rather than changing existing core systems.
+
+Core Design Philosophy
+
+Separate the platform into two major layers.
+
+    User Interface
+        |
+    Experience Framework
+        |
+    Module Manager
+        |
+    Core Platform  +  Optional Modules
+
+The Core Platform should never directly depend on optional systems.
+
+6.11.1 Core Platform
+
+The Core Platform contains only functionality required for every installation.
+
+Core Components:
+
+User management
+Authentication
+Portfolio engine
+Trading engine
+Market data engine
+Data storage
+Company database
+AI model manager
+Analytics engine
+Settings system
+Configuration system
+API layer
+Plugin manager
+Experience framework
+
+These components should have zero dependencies on gamification or social systems.
+
+6.11.2 Module Architecture
+
+Every major feature should be implemented as a self-contained module. Modules communicate through well-defined interfaces and events.
+
+Gamification Module
+AI Mentor Module
+Knowledge Base Module
+Discord Module
+Notification Module
+Multiplayer Module
+AI Competitor Module
+Leaderboards Module
+Reporting Module
+Classroom Module
+Historical Scenarios Module
+Automation Module
+
+A module should never directly modify another module's internal state. Instead, communication occurs through the event system.
+
+6.11.3 Plugin Framework
+
+All modules should behave as plugins. Plugins may be built-in, first-party, or third-party (future).
+
+Each plugin should define: Name, Version, Dependencies, Permissions, Configuration, Settings UI, Events listened to, Events published.
+
+    plugin:
+      name: Discord Integration
+      version: 1.0.0
+      dependencies:
+        - Notifications
+      permissions:
+        - ReadPortfolio
+        - SendNotifications
+        - ReadAchievements
+
+6.11.4 Event Bus
+
+The platform should use an internal event-driven architecture.
+
+Events include: TradeExecuted, PortfolioUpdated, AchievementUnlocked, ChallengeCompleted, AIRecommendationGenerated, MarketOpened, MarketClosed, LessonCompleted, ScenarioFinished, UserLoggedIn.
+
+Modules subscribe only to events they care about:
+
+    Trade Executed -> Portfolio Engine -> Publish Event -> Event Bus
+      -> Gamification Module
+      -> Discord Module
+      -> Notifications Module
+      -> Analytics Module
+      -> AI Mentor
+
+6.11.5 Experience Framework
+
+Every portfolio uses an Experience Preset. Experience Presets determine which modules are active.
+
+Learning — education-focused.
+  Enabled: AI Mentor, Analytics, Portfolio, Knowledge Base, Historical Scenarios.
+  Disabled: XP, Levels, Achievements, Leaderboards, Seasonal events.
+
+Academy — everything enabled. Default preset.
+
+Professional — focus on clean analytics.
+  Enabled: Reporting, Portfolio, AI Mentor, Classroom, Historical Scenarios.
+  Disabled: Gamification, Cosmetic rewards, Seasonal competitions.
+
+6.11.6 Experience Levels
+
+Separate from Experience Presets. Every portfolio selects Beginner, Classic, or Expert. The preset defines which modules are available. The level defines how the user experiences them.
+
+6.11.7 Module Manager
+
+The Module Manager is responsible for: loading modules, validating dependencies, registering events, registering settings, initializing services, safe shutdown, and error isolation.
+
+If one module crashes, the application should continue running whenever possible.
+
+6.11.8 Module Lifecycle
+
+Every module should implement a standard lifecycle:
+
+    Load -> Initialize -> Register Events -> Start -> Running
+         -> Pause -> Resume -> Shutdown -> Unload
+
+6.11.9 Module Permissions
+
+Modules should request explicit permissions: Read Portfolio, Modify Portfolio, Read Company Data, Send Notifications, Access AI Models, Access Multiplayer, Read Historical Data.
+
+Future third-party plugins should be sandboxed using these permissions.
+
+6.11.10 Settings Registration
+
+Modules register their own settings pages.
+
+    Settings
+      Core | Appearance | AI | Portfolio | Discord | Notifications
+      | Gamification | Multiplayer | Classroom
+
+The core UI never needs updating when new modules are added.
+
+6.11.11 Dependency Management
+
+Modules declare dependencies (e.g. Discord -> Notifications -> Core). If Notifications is disabled, Discord features depending on it should automatically disable with a clear explanation.
+
+6.11.12 UI Contribution System
+
+Modules can contribute: navigation items, dashboard widgets, context menus, toolbar buttons, portfolio tabs, settings pages, notification types.
+
+The core UI dynamically assembles itself based on enabled modules.
+
+6.11.13 AI Provider Abstraction
+
+AI providers should also be plugins: Ollama, LM Studio, OpenAI-compatible APIs, llama.cpp, future providers. The rest of the application talks only to the AI abstraction layer.
+
+6.11.14 Notification Providers
+
+Notification systems should be modular: Email, Discord, Slack, Microsoft Teams, Telegram, Push Notifications, SMS (future).
+
+6.11.15 Broker Integrations (Future)
+
+Future real trading support should use the same architecture: Paper Trading, Interactive Brokers, Alpaca, Wealthsimple, Questrade, Schwab. Portfolio logic should not care which execution provider is active.
+
+6.11.16 Testing Requirements
+
+Every module should support unit testing, integration testing, mock event injection, and independent execution where practical. Modules should be testable in isolation.
+
+6.11.17 Documentation Requirements
+
+Each module must include: purpose, dependencies, public API, published events, consumed events, settings, permissions, known limitations.
+
+6.11.18 Success Criteria
+
+M6.11 is complete when:
+
+The application runs using the new modular architecture.
+M6 features have been migrated into modules.
+Experience Presets can enable or disable entire modules without code changes.
+The UI automatically adapts based on active modules.
+New modules can be added without modifying the core application.
+Modules communicate exclusively through the event bus or defined interfaces.
+AI providers, notification providers, and future broker integrations all use the same plugin abstraction.
+A module failure does not bring down the entire application whenever graceful degradation is possible.
+
 M7 — Multiplayer, Community & External Integrations
 Goal
 

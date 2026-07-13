@@ -329,6 +329,29 @@ export interface CoachObservation {
   disclaimer: string;
 }
 
+export interface ModuleView {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  dependencies: string[];
+  permissions: string[];
+  events_published: string[];
+  events_consumed: string[];
+  ui: { kind: string; label: string; path: string; icon: string }[];
+  state: "RUNNING" | "DISABLED" | "FAILED" | "REGISTERED";
+  disabled_reason: string | null;
+  error: string | null;
+  pending_change: string | null;
+}
+
+export interface PresetView {
+  id: string;
+  label: string;
+  description: string;
+  disabled_modules: string[];
+}
+
 export interface CompareSeries {
   symbol: string;
   currency: string;
@@ -571,6 +594,13 @@ export const api = {
     request<WhatIfResult>(`/portfolios/${pid}/whatif`, {
       method: "POST",
       body: JSON.stringify({ scenario, range }),
+    }),
+  modules: () =>
+    request<{ modules: ModuleView[]; presets: PresetView[] }>("/modules"),
+  setModule: (id: string, enabled: boolean) =>
+    request<{ applies: string; dependents_affected: string[] }>(`/modules/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
     }),
   gamifyProfile: () => request<GamifyProfile>("/gamify/profile"),
   updateGamifyProfile: (body: object) =>

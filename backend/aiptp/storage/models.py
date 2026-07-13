@@ -104,6 +104,8 @@ class Portfolio(Base):
     # Each portfolio is an independent "game" (roadmap 6.4-6.6): its own
     # mode, progression, and optional end date.
     mode: Mapped[GameMode] = mapped_column(Enum(GameMode), default=GameMode.CLASSIC)
+    # Experience preset (roadmap 6.11.5): which modules act on this portfolio.
+    preset: Mapped[str] = mapped_column(String(20), default="ACADEMY")
     game_xp: Mapped[int] = mapped_column(default=0)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")

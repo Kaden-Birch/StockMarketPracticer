@@ -17,31 +17,28 @@ from .api import (
     ai as ai_api,
     analytics,
     auth as auth_api,
-    automation,
-    gamify,
     marketdata,
-    notifications,
+    modules as modules_api,
     orders,
-    plans,
     portfolios,
     strategies,
     watchlists,
     ws,
 )
-from .automation.engine import run_scheduled_rules_cycle
 from .config import Settings, settings
 from .core.events import EventBus
+from .core.modules import AppContext, ModuleManager
 from .marketdata.alphavantage import AlphaVantageProvider
 from .marketdata.fake import FakeProvider
 from .marketdata.service import MarketDataService
 from .marketdata.stooq import StooqProvider
 from .marketdata.yahoo import YahooProvider
+from .modules import build_modules
 from .security import auth as auth_service
 from .security import credentials
 from .security.backup import backup_database
 from .storage.db import Base, make_engine, make_session_factory
 from .trading.corporate import run_corporate_actions_cycle
-from .trading.recurring import run_recurring_cycle
 from .watcher import run_watch_cycle
 
 log = logging.getLogger(__name__)
@@ -49,16 +46,19 @@ log = logging.getLogger(__name__)
 
 class SPAStaticFiles(StaticFiles):
     """Serves the built frontend; unknown paths fall back to index.html so
-    client-side routes (/portfolios/…, /companies/…) survive deep links."""
+    client-side routes (/portfolios/…, /companies/…) survive deep links.
+    API paths never fall through — an unmatched /api/ route (e.g. a disabled
+    module's endpoint) must be a real JSON 404, not the SPA HTML."""
 
     async def get_response(self, path: str, scope):
+        is_api = path.startswith("api/") or path == "api"
         try:
             response = await super().get_response(path, scope)
         except StarletteHTTPException as exc:
-            if exc.status_code != 404:
+            if exc.status_code != 404 or is_api:
                 raise
             return await super().get_response("index.html", scope)
-        if response.status_code == 404:
+        if response.status_code == 404 and not is_api:
             response = await super().get_response("index.html", scope)
         return response
 
@@ -110,25 +110,36 @@ def create_app(
     Base.metadata.create_all(engine)
     session_factory = make_session_factory(engine)
     market = market or build_market(cfg, session_factory)
-    model_manager = model_manager or ModelManager(cfg.data_dir / "models")
+    if model_manager is None:
+        from .ai.manager import build_runtime
+
+        model_manager = ModelManager(cfg.data_dir / "models", runtime=build_runtime(cfg))
     bus = EventBus()
+
+    scheduler_jobs: list = []  # modules append (fn, trigger_kwargs, args, owner)
+
+    def _isolated(fn, owner: str):
+        """Module jobs must never take the scheduler down (roadmap 6.11.7)."""
+
+        def wrapper(*args):
+            try:
+                fn(*args)
+            except Exception:  # noqa: BLE001
+                log.exception("Scheduled job %s (module %s) failed — isolated",
+                              getattr(fn, "__name__", fn), owner)
+
+        wrapper.__name__ = f"{owner}:{getattr(fn, '__name__', 'job')}"
+        return wrapper
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         bus.bind_loop(asyncio.get_running_loop())
         scheduler = BackgroundScheduler()
+        # Core platform jobs
         scheduler.add_job(
             run_watch_cycle,
             "interval",
             seconds=cfg.watch_interval_seconds,
-            args=[session_factory, market, bus],
-            max_instances=1,
-            coalesce=True,
-        )
-        scheduler.add_job(
-            run_recurring_cycle,
-            "interval",
-            seconds=60,
             args=[session_factory, market, bus],
             max_instances=1,
             coalesce=True,
@@ -143,23 +154,6 @@ def create_app(
             coalesce=True,
         )
         scheduler.add_job(
-            run_scheduled_rules_cycle,
-            "interval",
-            seconds=60,
-            args=[session_factory, market, bus],
-            max_instances=1,
-            coalesce=True,
-        )
-        scheduler.add_job(
-            gamify.run_gamify_cycle,
-            "interval",
-            minutes=10,
-            next_run_time=datetime.now() + timedelta(seconds=90),
-            args=[session_factory, market, bus],
-            max_instances=1,
-            coalesce=True,
-        )
-        scheduler.add_job(
             backup_database,
             "interval",
             hours=cfg.backup_interval_hours,
@@ -168,9 +162,16 @@ def create_app(
             max_instances=1,
             coalesce=True,
         )
+        # Module-contributed jobs (registered by running modules only)
+        for fn, trigger_kwargs, args, owner in scheduler_jobs:
+            scheduler.add_job(
+                _isolated(fn, owner), args=args, max_instances=1, coalesce=True,
+                **trigger_kwargs,
+            )
         scheduler.start()
-        log.info("AIPTP %s started (provider=%s, watch every %ss)",
-                 __version__, market.provider.name, cfg.watch_interval_seconds)
+        log.info("AIPTP %s started (provider=%s, watch every %ss, %d module jobs)",
+                 __version__, market.provider.name, cfg.watch_interval_seconds,
+                 len(scheduler_jobs))
         yield
         scheduler.shutdown(wait=False)
 
@@ -213,25 +214,36 @@ def create_app(
                 request.state.username = user.username
         return await call_next(request)
 
+    # ---- Core Platform routers (roadmap 6.11.1) ----
     api_prefix = "/api/v1"
     app.include_router(portfolios.router, prefix=api_prefix)
     app.include_router(portfolios.symbols_router, prefix=api_prefix)
     app.include_router(orders.router, prefix=api_prefix)
-    app.include_router(plans.router, prefix=api_prefix)
     app.include_router(watchlists.router, prefix=api_prefix)
     app.include_router(analytics.router, prefix=api_prefix)
-    app.include_router(automation.router, prefix=api_prefix)
-    app.include_router(ai_api.router, prefix=api_prefix)
-    app.include_router(ai_api.prouter, prefix=api_prefix)
+    app.include_router(ai_api.router, prefix=api_prefix)  # model manager = core
     app.include_router(strategies.router, prefix=api_prefix)
     app.include_router(strategies.whatif_router, prefix=api_prefix)
-    app.include_router(gamify.router, prefix=api_prefix)
-    app.include_router(gamify.prouter, prefix=api_prefix)
-    app.include_router(notifications.router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)
+    app.include_router(modules_api.router, prefix=api_prefix)
     app.include_router(marketdata.router, prefix=api_prefix)
     app.include_router(ws.router, prefix=api_prefix)
+
+    # ---- Optional modules (roadmap 6.11.2): everything else registers
+    # itself through the ModuleManager; failures are isolated. ----
+    ctx = AppContext(
+        app=app,
+        session_factory=session_factory,
+        market=market,
+        bus=bus,
+        settings=cfg,
+        model_manager=model_manager,
+        scheduler_jobs=scheduler_jobs,
+    )
+    module_manager = ModuleManager(ctx)
+    app.state.module_manager = module_manager
+    module_manager.register_all(build_modules())
 
     @app.get("/api/v1/health")
     def health():

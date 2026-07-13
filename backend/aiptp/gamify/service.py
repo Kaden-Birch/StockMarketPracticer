@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..notify.service import push_notification
+from ..core.presets import preset_allows
 from ..storage.models import AppSetting, Portfolio, Profile, XpEvent
 from .levels import level_from_xp, title_for_level
 
@@ -82,6 +82,12 @@ def award(
         raise ValueError(f"Unknown XP category: {category}")
     if amount <= 0 or not gamification_enabled(session):
         return False
+    if portfolio_id:
+        # Experience preset gating (roadmap 6.11.5): Learning/Professional
+        # portfolios earn no XP.
+        portfolio = session.get(Portfolio, portfolio_id)
+        if portfolio is not None and not preset_allows(portfolio.preset, "gamification"):
+            return False
     cap = ACTION_XP.get(kind, (None, None, None))[2]
     if cap is not None and _events_today(session, kind) >= cap:
         return False
@@ -97,11 +103,11 @@ def award(
             portfolio.game_xp += amount
 
     after_level = level_from_xp(total_xp(profile))
-    if after_level > before_level:
-        push_notification(
-            session, bus, type_="level_up",
-            title=f"Level up! You reached level {after_level}",
-            body=f"New title: {title_for_level(after_level)}",
+    if after_level > before_level and bus is not None:
+        bus.publish(
+            "level_up",
+            {"level": after_level, "title": title_for_level(after_level)},
+            session=session,
         )
     return True
 

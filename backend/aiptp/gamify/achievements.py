@@ -10,7 +10,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..marketdata.base import MarketDataError
-from ..notify.service import push_notification
 from ..storage.models import (
     BacktestRun,
     BacktestStatus,
@@ -90,12 +89,14 @@ def _grant(session: Session, bus, achievement: Achievement,
     award(session, bus, _XP_CATEGORY[achievement.category],
           f"achievement:{achievement.id}", achievement.xp,
           f"Achievement: {achievement.name}", portfolio_id)
-    push_notification(
-        session, bus, type_="achievement",
-        title=f"Achievement unlocked: {achievement.name}",
-        body=f"{achievement.description} (+{achievement.xp} XP)",
-        portfolio_id=portfolio_id,
-    )
+    if bus is not None:
+        bus.publish(
+            "achievement",
+            {"id": achievement.id, "name": achievement.name,
+             "description": f"{achievement.description} (+{achievement.xp} XP)",
+             "portfolio_id": portfolio_id},
+            session=session,
+        )
     log.info("Achievement earned: %s", achievement.id)
 
 

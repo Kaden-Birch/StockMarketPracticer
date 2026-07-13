@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [balance, setBalance] = useState("10000");
   const [method, setMethod] = useState("FIFO");
   const [mode, setMode] = useState("CLASSIC");
+  const [preset, setPreset] = useState("ACADEMY");
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -36,6 +37,7 @@ export default function Dashboard() {
         starting_balance: balance,
         cost_basis_method: method,
         mode,
+        preset,
       });
       setName("");
       refresh();
@@ -157,6 +159,15 @@ export default function Dashboard() {
               <option value="BEGINNER">Beginner</option>
               <option value="CLASSIC">Classic</option>
               <option value="EXPERT">Expert</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="pf-preset">Experience</label>
+            <select id="pf-preset" value={preset} onChange={(e) => setPreset(e.target.value)}
+              title="Preset decides which modules are active for this portfolio.">
+              <option value="ACADEMY">Academy (everything)</option>
+              <option value="LEARNING">Learning (no gamification)</option>
+              <option value="PROFESSIONAL">Professional (clean analytics)</option>
             </select>
           </div>
           <button type="submit">Create</button>

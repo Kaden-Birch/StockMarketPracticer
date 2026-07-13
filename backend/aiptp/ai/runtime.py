@@ -101,6 +101,66 @@ class LlamaCppRuntime:
             }
 
 
+class OpenAICompatibleRuntime:
+    """Talks to any OpenAI-compatible /v1/chat/completions endpoint — covers
+    Ollama (OpenAI-compat mode), LM Studio, and hosted OpenAI-compatible APIs
+    (roadmap 6.11.13). Models are remote, so load() just records the name and
+    catalog install/remove are no-ops; the rest of the app is unchanged."""
+
+    def __init__(self, base_url: str, api_key: str = "", timeout: float = 120.0):
+        self.base_url = base_url.rstrip("/")
+        self._api_key = api_key
+        self._timeout = timeout
+        self.model_id: str | None = None
+        self._lock = threading.Lock()
+
+    def load(self, model_id: str, model_path=None) -> None:
+        self.model_id = model_id
+
+    def unload(self) -> None:
+        self.model_id = None
+
+    def _post(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        import httpx
+
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        with self._lock:
+            resp = httpx.post(
+                f"{self.base_url}/v1/chat/completions",
+                headers=headers,
+                json={
+                    "model": self.model_id or "default",
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=self._timeout,
+            )
+        if resp.status_code != 200:
+            raise RuntimeError(f"AI endpoint returned {resp.status_code}: {resp.text[:200]}")
+        return resp.json()["choices"][0]["message"]["content"]
+
+    def generate(self, system: str, user: str, max_tokens: int = 1024) -> str:
+        return self._post(
+            [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            max_tokens, 0.2,
+        )
+
+    def benchmark(self, prompt: str = "Explain diversification in one paragraph.") -> dict:
+        start = time.monotonic()
+        text = self._post([{"role": "user", "content": prompt}], 128, 0.0)
+        elapsed = time.monotonic() - start
+        approx_tokens = max(1, len(text.split()))
+        return {
+            "model_id": self.model_id,
+            "elapsed_seconds": round(elapsed, 2),
+            "completion_tokens": approx_tokens,
+            "tokens_per_second": round(approx_tokens / elapsed, 2) if elapsed else None,
+        }
+
+
 class FakeRuntime:
     """Deterministic runtime for tests: returns a canned response set by the
     test. Never used in real deployments."""

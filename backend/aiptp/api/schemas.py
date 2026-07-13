@@ -23,6 +23,7 @@ class PortfolioCreate(BaseModel):
     starting_balance: Decimal = Field(gt=0)
     cost_basis_method: CostBasisMethod = CostBasisMethod.FIFO
     mode: GameMode = GameMode.CLASSIC
+    preset: str = Field(default="ACADEMY", pattern="^(LEARNING|ACADEMY|PROFESSIONAL)$")
     ends_at: datetime | None = None
     notes: str = ""
 

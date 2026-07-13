@@ -89,6 +89,20 @@ daily caps), POST /gamify/evaluate forces the achievement/challenge cycle
 (also runs every 10 min). Per-portfolio: /report-card, /coach, /game.
 Opt-out must return awarded:false and evaluate must no-op.
 
+## Modular architecture (M6.11)
+
+Optional features are modules (`aiptp/modules/`) registered by the
+ModuleManager at boot via the event bus — the core never imports them. Check
+`GET /api/v1/modules` (states RUNNING/DISABLED/FAILED, UI contributions);
+`PUT /api/v1/modules/{id}` toggles (applies after restart). Per-portfolio
+`preset` (ACADEMY/LEARNING/PROFESSIONAL) gates module endpoints → 409 when the
+preset disables a module (e.g. Learning blocks `/report-card` but keeps
+`/coach`). Disabled-at-boot module routes return real 404 JSON (SPA fallback
+excludes `/api/`). Notifications now flow ONLY through the event bus — no
+publisher calls push_notification directly; mid-transaction publishers pass
+`session=` to avoid the SQLite self-deadlock. AI runtime via
+`AIPTP_AI_RUNTIME=llama|openai|fake`.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

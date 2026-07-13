@@ -11,7 +11,7 @@ from pathlib import Path
 import httpx
 
 from .catalog import CATALOG, ModelProfile
-from .runtime import FakeRuntime, LlamaCppRuntime
+from .runtime import FakeRuntime, LlamaCppRuntime, OpenAICompatibleRuntime
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +57,15 @@ def fit_for_hardware(profile: ModelProfile, hardware: dict) -> str:
     return "too_large"
 
 
+def build_runtime(cfg):
+    """Select the AI runtime provider from config (roadmap 6.11.13)."""
+    if cfg.ai_runtime == "openai":
+        return OpenAICompatibleRuntime(cfg.ai_base_url, cfg.ai_api_key)
+    if cfg.ai_runtime == "fake":
+        return FakeRuntime()
+    return LlamaCppRuntime() if LlamaCppRuntime.available() else FakeRuntime()
+
+
 class ModelManager:
     def __init__(self, models_dir: Path, runtime=None):
         self.models_dir = models_dir
@@ -65,6 +74,9 @@ class ModelManager:
             LlamaCppRuntime() if LlamaCppRuntime.available() else FakeRuntime()
         )
         self.runtime_kind = type(self.runtime).__name__
+        # Remote runtimes host models server-side; local catalog install/load
+        # is a no-op there (roadmap 6.11.13).
+        self.remote = isinstance(self.runtime, OpenAICompatibleRuntime)
         self._download_lock = threading.Lock()
         self.download_progress: dict[str, dict] = {}  # model_id -> {done, total}
 
