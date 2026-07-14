@@ -823,3 +823,47 @@ class AssignmentEntry(Base):
     portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
     scenario_session_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ---------------------------------------------------------------- M9 models
+
+
+class AiPlayer(Base):
+    """A simulated opponent (roadmap 9.1-9.4): an investing philosophy plus
+    a personality (traits scaled by difficulty) driving a real portfolio.
+    All of its trades carry origin=AI_AUTO — permanently marked."""
+
+    __tablename__ = "ai_players"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    competition_id: Mapped[str] = mapped_column(
+        ForeignKey("competitions.id", ondelete="CASCADE"))
+    portfolio_id: Mapped[str] = mapped_column(
+        ForeignKey("portfolios.id", ondelete="CASCADE"))
+    profile: Mapped[str] = mapped_column(String(20))
+    difficulty: Mapped[str] = mapped_column(String(15), default="intermediate")
+    display_name: Mapped[str] = mapped_column(String(80))
+    traits: Mapped[str] = mapped_column(Text, default="{}")  # JSON personality
+    adaptive: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_cycle_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)
+
+
+class AiDecision(Base):
+    """Full transparency (roadmap 9.5): every AI action — including HOLD —
+    with its reason, the data consulted, confidence, and expected outcome."""
+
+    __tablename__ = "ai_decisions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    ai_player_id: Mapped[str] = mapped_column(
+        ForeignKey("ai_players.id", ondelete="CASCADE"))
+    action: Mapped[str] = mapped_column(String(12))  # BUY|SELL|HOLD|MISTAKE
+    symbol: Mapped[str] = mapped_column(String(20), default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    data_used: Mapped[str] = mapped_column(Text, default="{}")  # JSON
+    confidence: Mapped[int] = mapped_column(default=50)  # 0-100
+    expected_outcome: Mapped[str] = mapped_column(Text, default="")
+    executed_order_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

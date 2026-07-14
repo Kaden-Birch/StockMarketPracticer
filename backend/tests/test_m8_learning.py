@@ -170,7 +170,9 @@ def test_scenario_replay_no_future_knowledge(scenario_client):
     # comparison: you + market + 3 AI strategies, all truncated at day 6
     comp = c.get(f"/api/v1/scenarios/sessions/{sid}/comparison").json()
     ids = {s["id"] for s in comp["series"]}
-    assert ids == {"you", "market", "ai_buy_hold", "ai_dca", "ai_momentum"}
+    # M9.9 added index/growth/value/dividend historical opponents
+    assert {"you", "market", "ai_index", "ai_buy_hold", "ai_dca",
+            "ai_momentum"} <= ids
     for s in comp["series"]:
         assert len(s["points"]) <= 6
 

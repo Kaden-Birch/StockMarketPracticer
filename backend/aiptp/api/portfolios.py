@@ -58,10 +58,12 @@ def list_portfolios(
     from ..storage.models import PortfolioMember
 
     user = current_username()
-    # Scenario replay portfolios live on the Scenarios page — they price at
-    # historical closes, so mixing them into live listings would be wrong.
+    # Scenario replay portfolios live on the Scenarios page (historical
+    # prices) and AI-opponent portfolios on their competition pages — both
+    # stay out of the personal dashboard.
     query = (select(Portfolio)
-             .where(Portfolio.scenario_session_id.is_(None))
+             .where(Portfolio.scenario_session_id.is_(None),
+                    ~Portfolio.owner.startswith("ai:"))
              .order_by(Portfolio.created_at))
     if not is_admin():
         member_ids = select(PortfolioMember.portfolio_id).where(

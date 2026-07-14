@@ -2,6 +2,7 @@
 and listing it in build_modules(); the core never changes."""
 
 from ..core.modules import Module
+from .ai_competitors_module import AiCompetitorsModule
 from .ai_mentor_module import AiMentorModule
 from .automation_module import AutomationModule
 from .career_module import CareerModule
@@ -28,4 +29,5 @@ def build_modules() -> list[Module]:
         ScenariosModule(),
         CareerModule(),
         ClassroomModule(),
+        AiCompetitorsModule(),
     ]

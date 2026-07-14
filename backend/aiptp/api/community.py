@@ -193,13 +193,17 @@ def competition_standings(
             score = risk_metrics(points).get("sharpe")
         elif comp.scoring == CompetitionScoring.DIVERSIFICATION:
             score = diversification(view).get("score")
-        rows.append({
+        row = {
             "display_name": e.display_name, "score": score,
             "return_pct": round(ret, 2) if ret is not None else None,
             "total_value": view["total_value"],
             "joined_at": e.joined_at.isoformat(),
             "is_me": e.username == current_username(),
-        })
+            "is_ai": e.username.startswith("ai:"),
+        }
+        if row["is_ai"]:
+            row["ai_player_id"] = e.username.removeprefix("ai:")
+        rows.append(row)
     rows.sort(key=lambda r: (r["score"] is None, -(r["score"] or 0)))
     for i, r in enumerate(rows, 1):
         r["rank"] = i

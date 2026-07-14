@@ -251,10 +251,68 @@ def ai_momentum(bars: dict[str, list[Bar]], scenario: Scenario,
     return series
 
 
+def ai_index(bars: dict[str, list[Bar]], scenario: Scenario,
+             cal: list[int], upto_ts: int) -> list[list]:
+    """100% into the benchmark index on day 1; never trades (roadmap 9.9)."""
+    start_price = close_at(bars[scenario.benchmark], cal[0])
+    if not start_price:
+        return []
+    qty = Decimal(scenario.starting_cash) / start_price
+    series = []
+    for ts in cal:
+        if ts > upto_ts:
+            break
+        price = close_at(bars[scenario.benchmark], ts) or Decimal("0")
+        series.append([ts, str((qty * price).quantize(Decimal("0.01")))])
+    return series
+
+
+# Style classification for scenario-universe tickers (roadmap 9.9): lets the
+# comparison include dividend/growth/value strategies built from the same
+# real bars. Price-history-only classification — labels follow common market
+# convention for these well-known names.
+STYLE_TICKERS = {
+    "growth": {"MSFT", "NVDA", "AMZN", "GOOGL", "META", "NFLX", "AMD", "AAPL",
+               "QCOM", "CSCO", "ORCL", "INTC", "CRM"},
+    "value": {"JPM", "BAC", "C", "GS", "XOM", "CVX", "IBM", "GE", "F", "GM",
+              "WMT", "INTC"},
+    "dividend": {"KO", "PG", "JNJ", "XOM", "CVX", "WMT", "IBM", "VZ", "T",
+                 "GE", "JPM", "MO", "PEP"},
+}
+
+
+def _ai_style(style: str):
+    """Equal-weight buy & hold of the universe names matching a style."""
+
+    def strategy(bars: dict[str, list[Bar]], scenario: Scenario,
+                 cal: list[int], upto_ts: int) -> list[list]:
+        day0 = cal[0]
+        picks = [s for s in scenario.universe
+                 if s in STYLE_TICKERS[style] and close_at(bars[s], day0)]
+        if len(picks) < 2:
+            return []  # not enough style names in this universe
+        per = Decimal(scenario.starting_cash) / len(picks)
+        qty = {s: per / close_at(bars[s], day0) for s in picks}
+        series = []
+        for ts in cal:
+            if ts > upto_ts:
+                break
+            value = sum((qty[s] * (close_at(bars[s], ts) or Decimal("0"))
+                         for s in picks), Decimal("0"))
+            series.append([ts, str(value.quantize(Decimal("0.01")))])
+        return series
+
+    return strategy
+
+
 AI_STRATEGIES = {
+    "ai_index": ("AI: Index fund (100% benchmark)", ai_index),
     "ai_buy_hold": ("AI: Buy & hold (equal weight)", ai_buy_hold),
     "ai_dca": ("AI: Monthly DCA into index", ai_dca),
     "ai_momentum": ("AI: 3-month momentum rotation", ai_momentum),
+    "ai_growth": ("AI: Growth strategy", _ai_style("growth")),
+    "ai_value": ("AI: Value strategy", _ai_style("value")),
+    "ai_dividend": ("AI: Dividend strategy", _ai_style("dividend")),
 }
 
 
@@ -336,8 +394,9 @@ def comparison(db: Session, market: MarketDataService,
          "points": market_series},
     ]
     for sid, (name, fn) in AI_STRATEGIES.items():
-        series.append({"id": sid, "name": name,
-                       "points": fn(bars, scenario, cal, upto)})
+        points = fn(bars, scenario, cal, upto)
+        if points:  # style strategies skip universes without enough matches
+            series.append({"id": sid, "name": name, "points": points})
 
     others = db.scalars(
         select(ScenarioSession).where(
