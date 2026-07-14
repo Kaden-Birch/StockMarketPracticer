@@ -150,6 +150,30 @@ Classroom: assignments with scenario_id create the scenario session at
 /assignments/{id}/start; progress dashboard is instructor-only (403).
 Module deps: classroom → scenarios (cascade like discord → notifications).
 
+## AI competitors (M9)
+
+POST /tournaments {template: beat_the_market|growth_vs_value|human_vs_ai}
+creates a private competition, auto-joins the caller, and adds AI players
+(each runs its first decision cycle synchronously — with the real provider
+this fetches quotes + history for the profile universe, so it takes a few
+seconds). POST /competitions/{id}/ai-players {profile, difficulty,
+adaptive} (creator-only, 403 otherwise). Profiles: conservative, growth,
+value, dividend, technical, quant, market_timer, beginner, index. AI
+portfolios are owned by "ai:<profile>" and excluded from /portfolios; all
+AI trades are origin=AI_AUTO. Transparency: GET /ai-players/{id}/decisions
+(reason + data_used.scores + confidence + expected_outcome; HOLD is also
+recorded). Force a cycle: POST /ai-players/{id}/cycle — the scheduler
+cycle (every 5 min) is patience-gated, so a freshly created player skips
+it (run_ai_cycle returns 0 acted). Adaptive test recipe: human leads big
+(rig fake price up), force a cycle, look for
+data_used.adaptive.borrowed_idea. Fake-provider tests must seed prices for
+the profile universes (see ALL_SYMBOLS in test_m9_aicomp) and
+history_bars for momentum/value/quant methods; flat default bars mean the
+market_timer is risk-ON (price == trend). Analysis: GET
+/competitions/{id}/analysis works mid-game. Module dep: ai_competitors →
+multiplayer. Scenario comparisons now include ai_index/ai_growth/
+ai_value/ai_dividend (style series skip universes with <2 matches).
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

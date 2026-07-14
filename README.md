@@ -10,7 +10,25 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M8 — Advanced Learning Ecosystem & AI Mentor (working).**
+**Phase: M9 — AI Investment Competitors & Simulated Opponents (working).**
+Nine AI investor profiles — Conservative, Growth, Value, Dividend,
+Technical, Quant, Market Timer, an educational Beginner that explains its
+own mistakes, and a passive Index Fund — join regular competitions as real
+entrants, so human/AI/mixed games share one standings system. Each profile
+is a deterministic strategy over real quotes and history with a
+personality (risk tolerance, patience, confidence, conviction,
+adaptability) scaled by four difficulty levels. Every AI action, including
+HOLD, is logged with its decision, reason, the data consulted, confidence,
+and expected outcome; every AI trade is permanently marked AI_AUTO.
+Adaptive opponents read the live standings, borrow the leader's best idea
+when trailing and de-risk when ahead. One-click tournaments (Beat the
+Market, Growth vs Value, Human vs AI), a deterministic post-game analysis
+(why you won or lost, what worked, what went wrong), and historical
+index/growth/value/dividend opponents inside scenario replays complete the
+milestone. See [docs/RUNNING.md](docs/RUNNING.md) for Mac/Linux install
+with GPU-accelerated local AI.
+
+Previously — **M8 (Advanced Learning Ecosystem & AI Mentor):**
 A persistent mentor that actually remembers you: deterministic behavioral
 analysis over your real trading history (selling winners too early, panic
 sells, missing international exposure, concentration, cash drag, knowledge

@@ -2,14 +2,18 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   api,
+  AiDecisionView,
+  AiProfileInfo,
   ClubMessageView,
   ClubRankRow,
   ClubSummary,
   ClubView,
+  CompetitionAnalysis,
   CompetitionView,
   fmtMoney,
   LeaderboardCategory,
   StandingRow,
+  TournamentInfo,
 } from "../api";
 import { useModules } from "../hooks/useModules";
 
@@ -89,9 +93,16 @@ function LeaderboardsTab() {
 /* ------------------------------------------------------------ competitions */
 
 function CompetitionsTab() {
+  const { running } = useModules();
   const [comps, setComps] = useState<CompetitionView[]>([]);
   const [standings, setStandings] = useState<Record<string, StandingRow[]>>({});
   const [error, setError] = useState("");
+  const [tournaments, setTournaments] = useState<TournamentInfo[]>([]);
+  const [aiProfiles, setAiProfiles] = useState<AiProfileInfo[]>([]);
+  const [aiForm, setAiForm] = useState<Record<string, { profile: string; difficulty: string; adaptive: boolean }>>({});
+  const [decisions, setDecisions] = useState<{ player: string; decisions: AiDecisionView[] } | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, CompetitionAnalysis>>({});
+  const aiOn = running("ai_competitors");
   const [name, setName] = useState("");
   const [kind, setKind] = useState("PUBLIC");
   const [scoring, setScoring] = useState("RETURN");
@@ -100,8 +111,52 @@ function CompetitionsTab() {
 
   const refresh = useCallback(() => {
     api.listCompetitions().then(setComps).catch((e: Error) => setError(e.message));
+    api.tournaments().then(setTournaments).catch(() => undefined);
+    api.aiProfiles().then(setAiProfiles).catch(() => undefined);
   }, []);
   useEffect(refresh, [refresh]);
+
+  async function startTournament(template: string) {
+    setError("");
+    try {
+      const t = await api.startTournament(template);
+      refresh();
+      await showStandings(t.competition_id);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function addAi(compId: string) {
+    const form = aiForm[compId] ?? { profile: "index", difficulty: "intermediate", adaptive: false };
+    setError("");
+    try {
+      await api.addAiPlayer(compId, form);
+      refresh();
+      await showStandings(compId);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function openDecisions(playerId: string) {
+    setError("");
+    try {
+      setDecisions(await api.aiDecisions(playerId));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function showAnalysis(compId: string) {
+    setError("");
+    try {
+      const a = await api.competitionAnalysis(compId);
+      setAnalysis((prev) => ({ ...prev, [compId]: a }));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -137,6 +192,59 @@ function CompetitionsTab() {
   return (
     <>
       {error && <div className="error">{error}</div>}
+      {aiOn && tournaments.length > 0 && (
+        <div className="card">
+          <h2>AI Tournaments</h2>
+          <p className="muted">
+            One click starts a private game against simulated opponents —
+            every AI trade is marked and its full decision log is open.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {tournaments.map((t) => (
+              <div key={t.id} style={{ flex: "1 1 260px", border: "1px solid var(--border)",
+                                       borderRadius: 8, padding: 12 }}>
+                <strong>{t.name}</strong>
+                <p className="muted" style={{ margin: "6px 0" }}>{t.description}</p>
+                <p className="muted">{t.ai_players.length} AI opponent{t.ai_players.length > 1 ? "s" : ""}</p>
+                <button onClick={() => startTournament(t.id)}>Start</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {decisions && (
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h2>Decision log — {decisions.player}</h2>
+            <button className="ghost" onClick={() => setDecisions(null)}>Close</button>
+          </div>
+          <p className="muted">
+            Full transparency: what it did, why, the data it used, its
+            confidence, and what it expected to happen.
+          </p>
+          {decisions.decisions.map((d, i) => (
+            <div key={i} style={{ borderBottom: "1px solid var(--border)", padding: "8px 0" }}>
+              <strong>
+                <span className={`badge ${d.action === "BUY" ? "FILLED"
+                  : d.action === "SELL" ? "PENDING"
+                  : d.action === "MISTAKE" ? "REJECTED" : "CANCELLED"}`}>
+                  {d.action}
+                </span>{" "}
+                {d.symbol}
+              </strong>{" "}
+              <span className="muted">confidence {d.confidence}% · {new Date(d.created_at).toLocaleString()}</span>
+              <div>{d.reason}</div>
+              <div className="muted">Expected: {d.expected_outcome}</div>
+              {"selection" in d.data_used && (
+                <div className="muted">Data: {String(d.data_used.selection)}
+                  {"scores" in d.data_used
+                    ? " · scores " + JSON.stringify(d.data_used.scores) : ""}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="card">
         <h2>Start a competition</h2>
         <p className="muted">
@@ -186,11 +294,43 @@ function CompetitionsTab() {
             )}
             {c.joined && <span className="badge FILLED">Joined</span>}
             <button className="ghost" onClick={() => showStandings(c.id)}>Standings</button>
+            {aiOn && <button className="ghost" onClick={() => showAnalysis(c.id)}>Analysis</button>}
           </div>
+          {aiOn && aiProfiles.length > 0 && (
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+              <span className="muted">Add AI opponent:</span>
+              <select value={(aiForm[c.id] ?? { profile: "index" }).profile}
+                onChange={(e) => setAiForm({ ...aiForm, [c.id]: {
+                  ...(aiForm[c.id] ?? { difficulty: "intermediate", adaptive: false }),
+                  profile: e.target.value } })}>
+                {aiProfiles.map((p) => (
+                  <option key={p.id} value={p.id} title={p.philosophy}>{p.name}</option>
+                ))}
+              </select>
+              <select value={(aiForm[c.id] ?? { difficulty: "intermediate" }).difficulty}
+                onChange={(e) => setAiForm({ ...aiForm, [c.id]: {
+                  ...(aiForm[c.id] ?? { profile: "index", adaptive: false }),
+                  difficulty: e.target.value } })}>
+                {(aiProfiles[0]?.difficulties ?? []).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <label style={{ display: "flex", gap: 4, alignItems: "center" }}
+                title="Adaptive AIs watch the standings and adjust their strategy">
+                <input type="checkbox"
+                  checked={(aiForm[c.id] ?? { adaptive: false }).adaptive}
+                  onChange={(e) => setAiForm({ ...aiForm, [c.id]: {
+                    ...(aiForm[c.id] ?? { profile: "index", difficulty: "intermediate" }),
+                    adaptive: e.target.checked } })} />
+                adaptive
+              </label>
+              <button className="ghost" onClick={() => addAi(c.id)}>Add 🤖</button>
+            </div>
+          )}
           {standings[c.id] && (
             <table style={{ marginTop: 10 }}>
               <thead>
-                <tr><th>#</th><th>Player</th><th>Return</th><th>Value</th><th>Score</th></tr>
+                <tr><th>#</th><th>Player</th><th>Return</th><th>Value</th><th>Score</th><th /></tr>
               </thead>
               <tbody>
                 {standings[c.id].map((r) => (
@@ -200,10 +340,43 @@ function CompetitionsTab() {
                     <td>{r.return_pct === null ? "—" : `${r.return_pct.toFixed(2)}%`}</td>
                     <td>{fmtMoney(r.total_value)}</td>
                     <td>{r.score === null ? "—" : r.score}</td>
+                    <td>
+                      {r.is_ai && r.ai_player_id && (
+                        <button className="ghost"
+                          onClick={() => openDecisions(r.ai_player_id!)}>
+                          Decisions
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+          {analysis[c.id] && (
+            <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+              <h3>Game analysis</h3>
+              {analysis[c.id].findings.map((f, i) => <p key={i}>• {f}</p>)}
+              <table>
+                <thead>
+                  <tr><th>#</th><th>Player</th><th>Return</th><th>Trades</th>
+                      <th>Win rate</th><th>Diversification</th><th>Cash</th></tr>
+                </thead>
+                <tbody>
+                  {analysis[c.id].standings.map((r) => (
+                    <tr key={r.rank} style={r.is_you ? { fontWeight: 600 } : undefined}>
+                      <td>{r.rank}</td>
+                      <td>{r.name}{r.is_you ? " (you)" : ""}</td>
+                      <td>{r.return_pct}%</td>
+                      <td>{r.trades}</td>
+                      <td>{r.win_rate === null ? "—" : `${r.win_rate}%`}</td>
+                      <td>{r.diversification ?? "—"}</td>
+                      <td>{r.cash_pct === null ? "—" : `${r.cash_pct}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       ))}

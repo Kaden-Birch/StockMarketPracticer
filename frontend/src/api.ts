@@ -420,6 +420,60 @@ export interface StandingRow {
   return_pct: number | null;
   total_value: string;
   is_me: boolean;
+  is_ai?: boolean;
+  ai_player_id?: string;
+}
+
+export interface AiProfileInfo {
+  id: string;
+  name: string;
+  philosophy: string;
+  universe: string[];
+  method: string;
+  traits: Record<string, number>;
+  difficulties: string[];
+}
+
+export interface AiPlayerView {
+  id: string;
+  profile: string;
+  name: string;
+  philosophy: string;
+  difficulty: string;
+  adaptive: boolean;
+  traits: Record<string, number>;
+  portfolio_id: string;
+  value?: string | null;
+  return_pct?: string;
+  holdings?: { symbol: string; market_value: string | null }[];
+  last_cycle_at: string | null;
+}
+
+export interface AiDecisionView {
+  action: string;
+  symbol: string;
+  reason: string;
+  data_used: Record<string, unknown>;
+  confidence: number;
+  expected_outcome: string;
+  executed_order_id: string | null;
+  created_at: string;
+}
+
+export interface TournamentInfo {
+  id: string;
+  name: string;
+  description: string;
+  ai_players: { profile: string; difficulty: string; adaptive: boolean }[];
+}
+
+export interface CompetitionAnalysis {
+  standings: {
+    rank: number; name: string; is_you: boolean; is_ai: boolean;
+    return_pct: number; trades: number; win_rate: number | null;
+    diversification: number | null; cash_pct: number | null;
+  }[];
+  findings: string[];
 }
 
 export interface MemberView {
@@ -1039,6 +1093,29 @@ export const api = {
     ),
   classroomProgress: (id: string) =>
     request<ClassroomProgress>(`/classrooms/${id}/progress`),
+  // M9
+  aiProfiles: () => request<AiProfileInfo[]>("/ai-players/profiles"),
+  addAiPlayer: (competitionId: string, body: object) =>
+    request<AiPlayerView>(`/competitions/${competitionId}/ai-players`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  listAiPlayers: (competitionId: string) =>
+    request<AiPlayerView[]>(`/competitions/${competitionId}/ai-players`),
+  aiDecisions: (playerId: string) =>
+    request<{ player: string; decisions: AiDecisionView[] }>(
+      `/ai-players/${playerId}/decisions`,
+    ),
+  aiForceCycle: (playerId: string) =>
+    request<{ decisions: number }>(`/ai-players/${playerId}/cycle`, { method: "POST" }),
+  tournaments: () => request<TournamentInfo[]>("/tournaments"),
+  startTournament: (template: string) =>
+    request<{ competition_id: string; portfolio_id: string }>("/tournaments", {
+      method: "POST",
+      body: JSON.stringify({ template }),
+    }),
+  competitionAnalysis: (competitionId: string) =>
+    request<CompetitionAnalysis>(`/competitions/${competitionId}/analysis`),
   listUsers: () => request<UserView[]>("/admin/users"),
   createUser: (body: object) =>
     request<UserView>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
