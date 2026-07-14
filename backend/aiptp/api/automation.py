@@ -19,6 +19,7 @@ class RuleCreate(BaseModel):
     action_type: RuleActionType
     action_params: dict = {}
     cooldown_seconds: int = Field(default=3600, ge=0)
+    fire_once: bool = False
     max_fires_per_day: int = Field(default=5, ge=1, le=100)
     enabled: bool = True
 
@@ -29,6 +30,7 @@ class RuleUpdate(BaseModel):
     action_type: RuleActionType | None = None
     action_params: dict | None = None
     cooldown_seconds: int | None = Field(default=None, ge=0)
+    fire_once: bool | None = None
     max_fires_per_day: int | None = Field(default=None, ge=1, le=100)
     enabled: bool | None = None
 
@@ -57,6 +59,7 @@ def _rule_view(rule: AutomationRule) -> dict:
         "action_params": json.loads(rule.action_params or "{}"),
         "enabled": rule.enabled,
         "cooldown_seconds": rule.cooldown_seconds,
+        "fire_once": rule.fire_once,
         "max_fires_per_day": rule.max_fires_per_day,
         "last_fired_at": rule.last_fired_at.isoformat() if rule.last_fired_at else None,
         "fire_count": rule.fire_count,
@@ -84,6 +87,7 @@ def create_rule(
         action_type=body.action_type,
         action_params=json.dumps(body.action_params),
         cooldown_seconds=body.cooldown_seconds,
+        fire_once=body.fire_once,
         max_fires_per_day=body.max_fires_per_day,
         enabled=body.enabled,
     )
@@ -129,7 +133,7 @@ def update_rule(
         rule.action_params = json.dumps(body.action_params)
     if body.action_type is not None:
         rule.action_type = body.action_type
-    for field in ("name", "cooldown_seconds", "max_fires_per_day", "enabled"):
+    for field in ("name", "cooldown_seconds", "max_fires_per_day", "enabled", "fire_once"):
         value = getattr(body, field)
         if value is not None:
             setattr(rule, field, value)

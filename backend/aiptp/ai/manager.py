@@ -133,12 +133,27 @@ class ModelManager:
                 else:
                     mode = "ab"
                 total = int(resp.headers.get("content-length", 0)) + done
-                self.download_progress[model_id] = {"done": done, "total": total}
+                self.download_progress[model_id] = {"done": done, "total": total,
+                                                    "speed_bps": 0}
+                import time as _time
+
+                window_start = _time.monotonic()
+                window_bytes = 0
+                speed = 0.0
                 with open(partial, mode) as f:
                     for chunk in resp.iter_bytes(1024 * 512):
                         f.write(chunk)
                         done += len(chunk)
-                        self.download_progress[model_id] = {"done": done, "total": total}
+                        window_bytes += len(chunk)
+                        elapsed = _time.monotonic() - window_start
+                        if elapsed >= 1.0:  # rolling 1s window for live speed
+                            speed = window_bytes / elapsed
+                            window_start = _time.monotonic()
+                            window_bytes = 0
+                        self.download_progress[model_id] = {
+                            "done": done, "total": total,
+                            "speed_bps": int(speed),
+                        }
             partial.rename(target)
             self.download_progress.pop(model_id, None)
             log.info("Model %s installed (%s)", model_id, target.name)

@@ -26,6 +26,7 @@ export interface PortfolioView {
   owner: string;
   public_on_leaderboard: boolean;
   game_xp: number;
+  game_id: string | null;
   created_at: string;
   holdings: HoldingView[];
   market_value: string;
@@ -152,6 +153,7 @@ export interface AutomationRuleView {
   enabled: boolean;
   cooldown_seconds: number;
   max_fires_per_day: number;
+  fire_once: boolean;
   last_fired_at: string | null;
   fire_count: number;
   created_at: string;
@@ -195,7 +197,7 @@ export interface ModelView {
   installed: boolean;
   loaded: boolean;
   hardware_fit: "fits" | "marginal" | "too_large" | "unknown";
-  download: { done: number; total: number } | null;
+  download: { done: number; total: number; speed_bps?: number } | null;
 }
 
 export interface RecommendationView {
@@ -777,6 +779,27 @@ export interface LearnSuggestion {
   portfolio: string | null;
 }
 
+export interface FutureView {
+  id: string;
+  simulated: boolean;
+  disclaimer: string;
+  portfolio_id: string;
+  symbols: string[];
+  seed: string;
+  step: number;
+  virtual_date: string;
+  years_elapsed: number;
+  cash: string;
+  value: string;
+  return_pct: string;
+  quotes: Record<
+    string,
+    { price: string; prev_close: string | null; start_price: string; simulated: boolean }
+  >;
+  holdings: { symbol: string; quantity: string; market_value: string }[];
+  value_points: { step: number; date: string; value: string }[];
+}
+
 export class AuthRequiredError extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -805,7 +828,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listPortfolios: () => request<PortfolioView[]>("/portfolios"),
+  listPortfolios: (game = "") =>
+    request<PortfolioView[]>(`/portfolios${game ? `?game=${game}` : ""}`),
   getPortfolio: (id: string) => request<PortfolioView>(`/portfolios/${id}`),
   createPortfolio: (body: object) =>
     request<PortfolioView>("/portfolios", { method: "POST", body: JSON.stringify(body) }),
@@ -1195,6 +1219,49 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ params }),
     }),
+  // M11
+  companyProfile: (symbol: string) =>
+    request<Record<string, string | number | null>>(`/marketdata/profile/${symbol}`),
+  companyNews: (symbol: string) =>
+    request<{ title: string; publisher: string; link: string; published_at: number | null }[]>(
+      `/marketdata/news/${symbol}`,
+    ),
+  companySummary: (symbol: string) =>
+    request<{ summary: string }>(`/marketdata/summary/${symbol}`, { method: "POST" }),
+  listGames: () =>
+    request<{ id: string | null; name: string; portfolios: number }[]>("/games"),
+  createGame: (name: string) =>
+    request<{ id: string; name: string }>("/games", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  deleteGame: (id: string) => request<void>(`/games/${id}`, { method: "DELETE" }),
+  networth: (range: string, inflationPct: number, gameId = "") =>
+    request<{ points: { date: string; value: number; real_value?: number }[];
+              portfolios: number; note: string }>(
+      `/networth?range=${range}&inflation_pct=${inflationPct}&game_id=${gameId}`,
+    ),
+  futureSessions: () =>
+    request<{ disclaimer: string; sessions: { id: string; symbols: string;
+      step: number; virtual_date: string }[] }>("/future"),
+  futureStart: (symbols: string[], startingCash: string) =>
+    request<FutureView>("/future/sessions", {
+      method: "POST",
+      body: JSON.stringify({ symbols, starting_cash: startingCash }),
+    }),
+  futureGet: (id: string) => request<FutureView>(`/future/sessions/${id}`),
+  futureTrade: (id: string, body: object) =>
+    request<{ status: string; filled_price: string | null }>(
+      `/future/sessions/${id}/trade`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  futureAdvance: (id: string, days: number) =>
+    request<FutureView>(`/future/sessions/${id}/advance`, {
+      method: "POST",
+      body: JSON.stringify({ days }),
+    }),
+  futureAbandon: (id: string) =>
+    request<void>(`/future/sessions/${id}`, { method: "DELETE" }),
   listUsers: () => request<UserView[]>("/admin/users"),
   createUser: (body: object) =>
     request<UserView>("/admin/users", { method: "POST", body: JSON.stringify(body) }),

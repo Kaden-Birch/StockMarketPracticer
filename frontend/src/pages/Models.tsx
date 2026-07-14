@@ -27,6 +27,16 @@ export default function ModelsPage() {
   }, []);
   useEffect(refresh, [refresh]);
 
+  // While a download is running, poll so the progress bar moves.
+  const downloading = models.some((m) => m.download) || busy !== null;
+  useEffect(() => {
+    if (!downloading) return;
+    const t = window.setInterval(() => {
+      api.aiModels().then((res) => setModels(res.models)).catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(t);
+  }, [downloading]);
+
   async function act(modelId: string, fn: () => Promise<unknown>) {
     setBusy(modelId);
     setError("");
@@ -115,6 +125,23 @@ export default function ModelsPage() {
                 </>
               )}
             </div>
+            {m.download && m.download.total > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ background: "var(--border, #333)", height: 10,
+                              borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ width: `${Math.min(100, (m.download.done / m.download.total) * 100)}%`,
+                                height: "100%", background: "var(--gain, #22a06b)",
+                                transition: "width .8s linear" }} />
+                </div>
+                <div className="muted" style={{ marginTop: 4 }}>
+                  {((m.download.done / m.download.total) * 100).toFixed(1)}% ·{" "}
+                  {(m.download.done / 1e9).toFixed(2)} / {(m.download.total / 1e9).toFixed(2)} GB
+                  {m.download.speed_bps ? <> · {(m.download.speed_bps / 1e6).toFixed(1)} MB/s
+                    {" · ~"}{Math.max(1, Math.round((m.download.total - m.download.done) /
+                      m.download.speed_bps))}s left</> : null}
+                </div>
+              </div>
+            )}
             <table style={{ marginTop: 10 }}>
               <tbody>
                 <tr>

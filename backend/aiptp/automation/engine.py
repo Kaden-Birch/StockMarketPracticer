@@ -229,6 +229,8 @@ def run_rules(
 
         rule.last_fired_at = now
         rule.fire_count += 1
+        if rule.fire_once:
+            rule.enabled = False  # one-shot rule: it never fires again
         session.add(RuleFire(rule_id=rule.id, result=result, detail=detail))
         if bus is not None:
             bus.publish(

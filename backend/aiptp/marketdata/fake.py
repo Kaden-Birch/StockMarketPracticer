@@ -26,6 +26,8 @@ class FakeProvider:
         self.fx_rates: dict[tuple[str, str], Decimal] = {}
         self.corporate_actions: dict[str, list[CorporateAction]] = {}
         self.history_bars: dict[str, list[Bar]] = {}
+        self.profiles: dict[str, dict] = {}
+        self.news: dict[str, list[dict]] = {}
 
     def set_price(self, symbol: str, price: str) -> None:
         self.prices[symbol.upper()] = Decimal(price)
@@ -65,6 +67,23 @@ class FakeProvider:
             currency=self.currencies.get(key, "USD"),
             bars=bars, provider=self.name, fetched_at=datetime.now(timezone.utc),
         )
+
+    def get_profile(self, symbol: str) -> dict:
+        key = symbol.upper()
+        if key not in self.prices:
+            raise SymbolNotFound(f"Unknown symbol: {symbol}")
+        return self.profiles.get(key, {
+            "symbol": key, "sector": "Testing", "industry": "Fixtures",
+            "employees": 42, "website": "https://example.com", "country": "US",
+            "summary": f"{key} is a fake company used in tests.",
+            "market_cap": "1B", "trailing_pe": "10", "forward_pe": "9",
+            "dividend_yield": "1%", "beta": "1.00",
+            "fifty_two_week_high": "120", "fifty_two_week_low": "80",
+            "provider": self.name,
+        })
+
+    def get_news(self, symbol: str) -> list[dict]:
+        return self.news.get(symbol.upper(), [])
 
     def get_history_window(self, symbol: str, start_ts: int, end_ts: int) -> History:
         hist = self.get_history(symbol, "window", "1d")

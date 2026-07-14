@@ -25,6 +25,7 @@ class PortfolioCreate(BaseModel):
     mode: GameMode = GameMode.CLASSIC
     preset: str = Field(default="ACADEMY", pattern="^(LEARNING|ACADEMY|PROFESSIONAL)$")
     ends_at: datetime | None = None
+    game_id: str | None = None
     notes: str = ""
 
     @field_validator("currency")
@@ -41,6 +42,7 @@ class PortfolioUpdate(BaseModel):
     dividend_reinvest: bool | None = None
     # Leaderboards are strictly opt-in (roadmap 7.3 / PRD privacy).
     public_on_leaderboard: bool | None = None
+    game_id: str | None = None
 
 
 class OrderCreate(BaseModel):

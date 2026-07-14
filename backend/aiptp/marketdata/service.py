@@ -121,6 +121,34 @@ class MarketDataService:
             self._history[key] = (time.monotonic(), hist)
         return hist
 
+    def get_profile(self, symbol: str) -> dict:
+        """Company profile from the first provider that supports it (cached
+        for the history TTL — profiles move slowly)."""
+        key = (symbol.upper(), "profile", "profile")
+        now = time.monotonic()
+        with self._lock:
+            cached = self._history.get(key)
+            if cached and now - cached[0] < max(self._history_ttl, 300):
+                return cached[1]
+
+        def fetch(p):
+            if not hasattr(p, "get_profile"):
+                raise MarketDataError(f"{p.name} has no company profiles")
+            return p.get_profile(symbol)
+
+        profile = self._fanout(Capability.HISTORY, fetch)
+        with self._lock:
+            self._history[key] = (now, profile)
+        return profile
+
+    def get_news(self, symbol: str) -> list[dict]:
+        def fetch(p):
+            if not hasattr(p, "get_news"):
+                raise MarketDataError(f"{p.name} has no news feed")
+            return p.get_news(symbol)
+
+        return self._fanout(Capability.HISTORY, fetch)
+
     def get_fx_rate(self, from_ccy: str, to_ccy: str) -> Decimal:
         if from_ccy == to_ccy:
             return Decimal("1")

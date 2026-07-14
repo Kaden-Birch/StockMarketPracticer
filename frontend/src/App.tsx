@@ -18,6 +18,7 @@ import ScenariosPage from "./pages/Scenarios";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
+import FuturePage from "./pages/Future";
 import SharedPage from "./pages/Shared";
 import PortfolioPage from "./pages/Portfolio";
 import SettingsPage from "./pages/Settings";
@@ -68,6 +69,7 @@ export default function App() {
         {running("scenarios") && <NavLink to="/scenarios">Scenarios</NavLink>}
         {running("career") && <NavLink to="/career">Career</NavLink>}
         {running("classroom") && <NavLink to="/classroom">Classroom</NavLink>}
+        {running("future") && <NavLink to="/future">Future</NavLink>}
         {(running("multiplayer") || running("leaderboards")) && (
           <NavLink to="/community">Community</NavLink>
         )}
@@ -102,6 +104,7 @@ export default function App() {
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/career" element={<CareerPage />} />
           <Route path="/classroom" element={<ClassroomPage />} />
+          <Route path="/future" element={<FuturePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>

@@ -10,8 +10,27 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M10 — Investment Knowledge Base & Interactive Learning (working —
-final milestone of the M1-M10 roadmap).**
+**Phase: M11 — Quality of Life (working).**
+Trading anywhere: an order ticket lives on the Companies screen and every
+company page, with name-aware autocomplete (type "Microsoft" or "Google",
+get MSFT / Alphabet with exchange labels — international listings like
+Samsung 005930.KS included), a live quote for the chosen symbol, and a
+what-this-order-costs preview before you buy. Company pages grew a real
+profile (sector, industry, description, market cap, P/E, dividend yield,
+52-week range), recent real news, and an optional AI performance summary
+grounded only in computed statistics. Charts zoom out past the selected
+range (daily presets carry 10 years of daily bars), take custom date
+ranges, and flip into % growth mode. The dashboard plots net worth over
+time (cash included) with an optional stated-assumption inflation
+adjustment, and portfolios can be grouped into isolated **Games**.
+Automation rules gained a fire-once-ever switch. The AI model catalog grew
+to 13 verified models with live download progress (%, speed, ETA). And
+**Future mode**: start at today's real prices and fast-forward through
+years of clearly-labeled SIMULATED prices calibrated to each stock's real
+history — deterministic per game, isolated from live portfolios.
+
+Previously — **M10 (Investment Knowledge Base & Interactive Learning —
+final milestone of the M1-M10 roadmap):**
 A searchable investment dictionary of 35 concepts across six categories,
 each with beginner, intermediate, and advanced explanations, related-term
 links, and quizzes with per-answer explanations. Contextual learning

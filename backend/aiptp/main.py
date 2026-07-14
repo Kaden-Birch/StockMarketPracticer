@@ -14,6 +14,7 @@ from . import __version__
 from .ai.manager import ModelManager
 from .api import (
     admin,
+    games_api,
     ai as ai_api,
     analytics,
     auth as auth_api,
@@ -235,6 +236,8 @@ def create_app(
     app.include_router(strategies.whatif_router, prefix=api_prefix)
     app.include_router(auth_api.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)
+    app.include_router(games_api.router, prefix=api_prefix)
+    app.include_router(games_api.networth_router, prefix=api_prefix)
     app.include_router(sharing.router, prefix=api_prefix)
     app.include_router(sharing.public_router, prefix=api_prefix)
     app.include_router(modules_api.router, prefix=api_prefix)

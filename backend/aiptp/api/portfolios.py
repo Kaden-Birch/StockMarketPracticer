@@ -42,6 +42,7 @@ def create_portfolio(
         mode=body.mode,
         preset=body.preset,
         ends_at=body.ends_at,
+        game_id=body.game_id,
         notes=body.notes,
     )
     session.add(portfolio)
@@ -51,6 +52,7 @@ def create_portfolio(
 
 @router.get("")
 def list_portfolios(
+    game: str = "",
     session: Session = Depends(get_db),
     market: MarketDataService = Depends(get_market),
 ):
@@ -65,6 +67,8 @@ def list_portfolios(
              .where(Portfolio.scenario_session_id.is_(None),
                     ~Portfolio.owner.startswith("ai:"))
              .order_by(Portfolio.created_at))
+    if game:
+        query = query.where(Portfolio.game_id == (None if game == "none" else game))
     if not is_admin():
         member_ids = select(PortfolioMember.portfolio_id).where(
             PortfolioMember.username == user

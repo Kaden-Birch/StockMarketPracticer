@@ -83,6 +83,7 @@ def value_portfolio(portfolio: Portfolio, market: MarketDataService) -> dict[str
         "mode": portfolio.mode.value,
         "preset": portfolio.preset,
         "owner": portfolio.owner,
+        "game_id": portfolio.game_id,
         "public_on_leaderboard": portfolio.public_on_leaderboard,
         "game_xp": portfolio.game_xp,
         "notes": portfolio.notes,

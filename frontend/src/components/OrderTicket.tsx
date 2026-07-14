@@ -1,5 +1,6 @@
-import { FormEvent, useState } from "react";
-import { api } from "../api";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { api, fmtMoney, QuoteView } from "../api";
+import SymbolPicker from "./SymbolPicker";
 
 interface Props {
   portfolioId: string;
@@ -23,6 +24,23 @@ export default function OrderTicket({ portfolioId, defaultSymbol = "", onPlaced 
   const [trail, setTrail] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [quote, setQuote] = useState<QuoteView | null>(null);
+  const quoteTimer = useRef<number>();
+
+  // Live price for the chosen symbol -> the user sees what a share costs
+  // and what the whole order will run before hitting Buy.
+  useEffect(() => {
+    setQuote(null);
+    window.clearTimeout(quoteTimer.current);
+    const s = symbol.trim();
+    if (s.length < 1) return;
+    quoteTimer.current = window.setTimeout(() => {
+      api.quotes([s])
+        .then((q) => setQuote(q[s.toUpperCase()] ?? null))
+        .catch(() => setQuote(null));
+    }, 350);
+    return () => window.clearTimeout(quoteTimer.current);
+  }, [symbol]);
 
   const needsLimit = type === "LIMIT" || type === "STOP_LIMIT";
   const needsStop = type === "STOP" || type === "STOP_LIMIT";
@@ -38,6 +56,12 @@ export default function OrderTicket({ portfolioId, defaultSymbol = "", onPlaced 
   const visibleSizing = sizingOptions.filter((o) => o.show);
   const effectiveSizing = visibleSizing.some((o) => o.value === sizing) ? sizing : "quantity";
   const usesPercent = effectiveSizing.startsWith("pct_");
+
+  const price = quote ? Number(quote.price) : null;
+  const estCost = price !== null && effectiveSizing === "quantity" && Number(quantity) > 0
+    ? price * Number(quantity) : null;
+  const estShares = price !== null && price > 0 && effectiveSizing === "notional"
+    && Number(notional) > 0 ? Number(notional) / price : null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -79,14 +103,8 @@ export default function OrderTicket({ portfolioId, defaultSymbol = "", onPlaced 
       <h2>Place order</h2>
       <div className="form-row">
         <div className="field">
-          <label htmlFor="ot-symbol">Symbol</label>
-          <input
-            id="ot-symbol"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            required
-            style={{ width: 100 }}
-          />
+          <label htmlFor="ot-symbol">Symbol / company</label>
+          <SymbolPicker id="ot-symbol" value={symbol} onChange={setSymbol} width={170} />
         </div>
         <div className="field">
           <label htmlFor="ot-side">Side</label>
@@ -176,6 +194,23 @@ export default function OrderTicket({ portfolioId, defaultSymbol = "", onPlaced 
         </button>
       </div>
       {error && <div className="error">{error}</div>}
+      {quote && (
+        <div style={{ marginTop: 8 }}>
+          <strong>{symbol}</strong> is trading at{" "}
+          <strong>{fmtMoney(quote.price, quote.currency)}</strong>
+          {estCost !== null && (
+            <> — {quantity} share{Number(quantity) === 1 ? "" : "s"} ≈{" "}
+              <strong>{fmtMoney(String(estCost), quote.currency)}</strong></>
+          )}
+          {estShares !== null && (
+            <> — {fmtMoney(notional, quote.currency)} buys ≈{" "}
+              <strong>{estShares.toFixed(4)} shares</strong></>
+          )}
+          {type !== "MARKET" && (
+            <span className="muted"> (fills at your {type.toLowerCase().replace("_", " ")} terms)</span>
+          )}
+        </div>
+      )}
       <div className="muted" style={{ marginTop: 8 }}>
         Simulated trading with real market prices — no real money is involved.
       </div>

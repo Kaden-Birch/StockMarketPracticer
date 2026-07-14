@@ -114,6 +114,8 @@ class Portfolio(Base):
     # M8.4: optional mandate ("" | retirement | growth | dividend | technology)
     # — compliance is reported, never force-liquidated.
     mandate: Mapped[str] = mapped_column(String(20), default="")
+    # M11: optional grouping into an isolated "game" space.
+    game_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # M8.2: set when this is a historical-scenario game portfolio. Scenario
     # portfolios trade at historical closes and are excluded from live
     # listings, the watcher, and live corporate actions.
@@ -593,6 +595,8 @@ class AutomationRule(Base):
     enabled: Mapped[bool] = mapped_column(default=True)
     cooldown_seconds: Mapped[int] = mapped_column(default=3600)
     max_fires_per_day: Mapped[int] = mapped_column(default=5)
+    # M11: one-shot rules disable themselves after their first fire
+    fire_once: Mapped[bool] = mapped_column(default=False)
     last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fire_count: Mapped[int] = mapped_column(default=0)
     armed: Mapped[bool] = mapped_column(default=True)  # edge-trigger state: re-arms when condition goes false
@@ -886,3 +890,36 @@ class ConceptProgress(Base):
     quiz_passed: Mapped[bool] = mapped_column(default=False)
     first_viewed: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_viewed: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Game(Base):
+    """M11: an isolated space grouping portfolios (e.g. 'Long-term ideas'
+    vs 'YOLO experiments'). Filtering, not a hard wall — profile/XP stay
+    global."""
+
+    __tablename__ = "games"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    owner: Mapped[str] = mapped_column(String(80), default="local")
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FutureSession(Base):
+    """Future game mode (M11 note 11): time runs as fast as you want,
+    forward from today's REAL prices, along SIMULATED paths statistically
+    calibrated to each stock's real history. Every surface that shows these
+    prices labels them simulated — they are practice fiction, not forecasts."""
+
+    __tablename__ = "future_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(80), default="local")
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    seed: Mapped[str] = mapped_column(String(32))
+    symbols: Mapped[str] = mapped_column(Text)  # JSON list
+    calibration: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-symbol {p0, mu, sigma}
+    current_step: Mapped[int] = mapped_column(default=0)  # trading days into the future
+    value_points: Mapped[str] = mapped_column(Text, default="[]")  # JSON [(step, value)]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

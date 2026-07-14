@@ -8,6 +8,7 @@ from .automation_module import AutomationModule
 from .career_module import CareerModule
 from .classroom_module import ClassroomModule
 from .discord_module import DiscordModule
+from .future_module import FutureModule
 from .gamification_module import GamificationModule
 from .knowledge_module import KnowledgeModule
 from .leaderboards_module import LeaderboardsModule
@@ -32,4 +33,5 @@ def build_modules() -> list[Module]:
         ClassroomModule(),
         AiCompetitorsModule(),
         KnowledgeModule(),
+        FutureModule(),
     ]

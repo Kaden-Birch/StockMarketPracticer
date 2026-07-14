@@ -61,8 +61,31 @@ export default function PriceChart({ symbol }: { symbol: string }) {
   const [provider, setProvider] = useState("");
   const [showTrades, setShowTrades] = useState(true);
   const [smaOn, setSmaOn] = useState<number[]>([]);
+  const [pctMode, setPctMode] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const theme = useThemeAttr();
   const [chartEpoch, setChartEpoch] = useState(0);
+
+  // Daily presets load the FULL listing history and only move the visible
+  // window — so zooming out reveals data past the selected range instead of
+  // hitting a cliff. Intraday/coarse presets still load their own data.
+  const DAILY = ["1M", "3M", "6M", "1Y"];
+  const usesFull = DAILY.includes(range) || Boolean(fromDate || toDate);
+  const RANGE_DAYS: Record<string, number> = { "1M": 31, "3M": 92, "6M": 183, "1Y": 366 };
+
+  function visibleWindow(bars: HistoryBar[]): { from: number; to: number } | null {
+    if (bars.length === 0) return null;
+    const last = bars[bars.length - 1].ts;
+    if (fromDate || toDate) {
+      const from = fromDate ? Math.floor(new Date(fromDate).getTime() / 1000) : bars[0].ts;
+      const to = toDate ? Math.floor(new Date(toDate).getTime() / 1000) + 86399 : last;
+      return { from, to };
+    }
+    const days = RANGE_DAYS[range];
+    if (!days) return null;
+    return { from: last - days * 86400, to: last };
+  }
 
   useEffect(() => {
     const el = containerRef.current;
@@ -102,17 +125,37 @@ export default function PriceChart({ symbol }: { symbol: string }) {
     let cancelled = false;
     setError("");
     api
-      .history(symbol, range)
+      .history(symbol, usesFull ? "FULL" : range)
       .then((hist) => {
         if (cancelled || !seriesRef.current || !chartRef.current) return;
         barsRef.current = hist.bars;
+        const window = usesFull ? visibleWindow(hist.bars) : null;
+        let base = hist.bars[0]?.close ?? 1;
+        if (pctMode && window) {
+          const first = hist.bars.find((b) => b.ts >= window.from);
+          base = first?.close ?? base;
+        }
         seriesRef.current.setData(
-          hist.bars.map((b) => ({ time: b.ts as UTCTimestamp, value: b.close })),
+          hist.bars.map((b) => ({
+            time: b.ts as UTCTimestamp,
+            value: pctMode ? ((b.close / base) - 1) * 100 : b.close,
+          })),
         );
+        seriesRef.current.applyOptions({
+          priceFormat: pctMode
+            ? { type: "custom", formatter: (v: number) => `${v.toFixed(1)}%`, minMove: 0.1 }
+            : { type: "price", precision: 2, minMove: 0.01 },
+        });
         chartRef.current.applyOptions({
           timeScale: { timeVisible: range === "1D" || range === "5D" },
         });
-        chartRef.current.timeScale().fitContent();
+        if (window) {
+          chartRef.current.timeScale().setVisibleRange({
+            from: window.from as UTCTimestamp, to: window.to as UTCTimestamp,
+          });
+        } else {
+          chartRef.current.timeScale().fitContent();
+        }
         setProvider(hist.provider);
         refreshSma(smaOn);
       })
@@ -121,7 +164,7 @@ export default function PriceChart({ symbol }: { symbol: string }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, range, chartEpoch]);
+  }, [symbol, range, chartEpoch, pctMode, fromDate, toDate]);
 
   // trade/dividend/split markers
   useEffect(() => {
@@ -176,14 +219,24 @@ export default function PriceChart({ symbol }: { symbol: string }) {
         {RANGES.map((r) => (
           <button
             key={r}
-            className={`ghost ${r === range ? "active" : ""}`}
-            onClick={() => setRange(r)}
+            className={`ghost ${r === range && !fromDate && !toDate ? "active" : ""}`}
+            onClick={() => { setFromDate(""); setToDate(""); setRange(r); }}
             role="tab"
             aria-selected={r === range}
           >
             {r}
           </button>
         ))}
+        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+          title="Custom range start" style={{ width: 130 }} />
+        <span className="muted">→</span>
+        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
+          title="Custom range end" style={{ width: 130 }} />
+        <button className={`ghost ${pctMode ? "active" : ""}`}
+          onClick={() => setPctMode(!pctMode)}
+          title="Show % change from the start of the window instead of price — ideal for comparing differently-priced stocks">
+          %
+        </button>
         <span style={{ flex: 1 }} />
         {SMA_OPTIONS.map((p) => (
           <button

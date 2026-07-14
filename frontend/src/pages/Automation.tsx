@@ -90,6 +90,7 @@ export default function AutomationPage() {
   const [actMessage, setActMessage] = useState("");
   const [cooldown, setCooldown] = useState("3600");
   const [maxFires, setMaxFires] = useState("5");
+  const [fireOnce, setFireOnce] = useState(false);
 
   const refresh = useCallback(() => {
     Promise.all([api.getPortfolio(id), api.listRules(id)])
@@ -122,6 +123,7 @@ export default function AutomationPage() {
         action_params,
         cooldown_seconds: Number(cooldown),
         max_fires_per_day: Number(maxFires),
+        fire_once: fireOnce,
       });
       setName("");
       setConds([emptyCond()]);
@@ -153,6 +155,11 @@ export default function AutomationPage() {
               <span className={`badge ${r.enabled ? "FILLED" : "CANCELLED"}`}>
                 {r.enabled ? "ACTIVE" : "PAUSED"}
               </span>
+              {r.fire_once && (
+                <span className="badge" title="Pauses itself permanently after its first fire">
+                  ONE-SHOT
+                </span>
+              )}
               <span className="muted">
                 when {describeTrigger(r.trigger)} → {r.action_type}{" "}
                 {JSON.stringify(r.action_params).replace(/[{}"]/g, " ")}
@@ -341,6 +348,14 @@ export default function AutomationPage() {
             <label htmlFor="rule-max">Max fires/day</label>
             <input id="rule-max" type="number" min="1" max="100" value={maxFires} style={{ width: 80 }}
               onChange={(e) => setMaxFires(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="rule-once"
+              title="After the first fire, the rule pauses itself permanently — resume it to arm it again">
+              Fire once ever
+            </label>
+            <input id="rule-once" type="checkbox" checked={fireOnce}
+              onChange={(e) => setFireOnce(e.target.checked)} />
           </div>
           <button type="submit">Create rule</button>
         </div>

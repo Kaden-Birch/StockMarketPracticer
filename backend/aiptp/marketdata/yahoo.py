@@ -93,6 +93,97 @@ class YahooProvider:
             )
         return quotes
 
+    def _ensure_crumb(self) -> str:
+        """Yahoo's quoteSummary endpoint requires a session cookie plus a
+        'crumb' token. Fetch once and cache; refresh on 401."""
+        if getattr(self, "_crumb", None):
+            return self._crumb
+        try:
+            self._client.get("https://fc.yahoo.com", follow_redirects=True)
+            crumb = self._client.get(
+                "https://query1.finance.yahoo.com/v1/test/getcrumb").text.strip()
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Yahoo unreachable: {exc}") from exc
+        if not crumb or "<" in crumb:
+            raise MarketDataError("Yahoo crumb handshake failed")
+        self._crumb = crumb
+        return crumb
+
+    def get_profile(self, symbol: str) -> dict:
+        """Real company profile + key stats (sector, industry, description,
+        market cap, P/E, dividend yield, beta, 52-week range)."""
+        def fetch() -> httpx.Response:
+            return self._client.get(
+                f"/v10/finance/quoteSummary/{symbol}",
+                params={"modules": "assetProfile,summaryDetail,defaultKeyStatistics",
+                        "crumb": self._ensure_crumb()},
+            )
+
+        try:
+            resp = fetch()
+            if resp.status_code == 401:  # crumb expired — refresh once
+                self._crumb = None
+                resp = fetch()
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Yahoo unreachable: {exc}") from exc
+        if resp.status_code == 404:
+            raise SymbolNotFound(f"Unknown symbol: {symbol}")
+        if resp.status_code != 200:
+            raise MarketDataError(f"Yahoo profile API returned {resp.status_code}")
+        results = (resp.json().get("quoteSummary") or {}).get("result") or []
+        if not results:
+            raise SymbolNotFound(f"No profile for symbol: {symbol}")
+        d = results[0]
+        profile = d.get("assetProfile") or {}
+        detail = d.get("summaryDetail") or {}
+        stats = d.get("defaultKeyStatistics") or {}
+
+        def fmt(section: dict, key: str):
+            v = section.get(key)
+            return v.get("fmt") if isinstance(v, dict) else v
+
+        return {
+            "symbol": symbol.upper(),
+            "sector": profile.get("sector"),
+            "industry": profile.get("industry"),
+            "employees": profile.get("fullTimeEmployees"),
+            "website": profile.get("website"),
+            "country": profile.get("country"),
+            "summary": profile.get("longBusinessSummary"),
+            "market_cap": fmt(detail, "marketCap"),
+            "trailing_pe": fmt(detail, "trailingPE"),
+            "forward_pe": fmt(stats, "forwardPE"),
+            "dividend_yield": fmt(detail, "dividendYield"),
+            "beta": fmt(detail, "beta"),
+            "fifty_two_week_high": fmt(detail, "fiftyTwoWeekHigh"),
+            "fifty_two_week_low": fmt(detail, "fiftyTwoWeekLow"),
+            "provider": self.name,
+        }
+
+    def get_news(self, symbol: str) -> list[dict]:
+        """Recent real news articles about the symbol (Yahoo Finance feed)."""
+        try:
+            resp = self._client.get(
+                "/v1/finance/search",
+                params={"q": symbol, "quotesCount": 0, "newsCount": 10,
+                        "listsCount": 0},
+            )
+        except httpx.HTTPError as exc:
+            raise MarketDataError(f"Yahoo unreachable: {exc}") from exc
+        if resp.status_code != 200:
+            raise MarketDataError(f"Yahoo news API returned {resp.status_code}")
+        out = []
+        for item in resp.json().get("news", []):
+            if not item.get("title"):
+                continue
+            out.append({
+                "title": item["title"],
+                "publisher": item.get("publisher", ""),
+                "link": item.get("link", ""),
+                "published_at": item.get("providerPublishTime"),
+            })
+        return out
+
     def get_history_window(self, symbol: str, start_ts: int, end_ts: int) -> History:
         """Real daily bars for an explicit historical window (roadmap 8.2)."""
         result = self._chart(symbol, "", "1d", period1=start_ts, period2=end_ts)

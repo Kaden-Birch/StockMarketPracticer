@@ -194,6 +194,33 @@ get_history_window (FakeProvider: seed SPY bars INSIDE the scenario's
 real window). Glossary popovers (frontend Term component) read the cached
 list — they do NOT record views/XP; only opening the full concept does.
 
+## Quality of life (M11)
+
+Company depth: GET /marketdata/profile/{sym} (real quoteSummary — needs a
+Yahoo cookie+crumb, fetched+cached automatically, 401 retried once);
+/marketdata/news/{sym}; POST /marketdata/summary/{sym} → 409 until a model
+is loaded, then narrates ONLY computed stats (returns, 52w position) +
+profile. Order tickets live on /companies AND /companies/{sym} (portfolio
+dropdown + SymbolPicker autocomplete via /marketdata/search — names work:
+"Microsoft"→MSFT, "Samsung"→005930.KS). Charts: daily presets (1M-1Y)
+fetch range=FULL (("10y","1d") — Yahoo silently downgrades "max"+1d to
+MONTHLY bars, hence 10y) and window via setVisibleRange so zoom-out works;
+custom date inputs + % growth mode are client-side. Rules: fire_once=true
+→ engine sets enabled=false after the first fire (resume re-arms). Games:
+POST /games, portfolios take game_id, GET /portfolios?game={id|none};
+delete ungroups, never deletes portfolios. GET /networth?range=&
+inflation_pct=&game_id= sums per-portfolio value_history (skips dates
+before each portfolio's created_at — a fresh portfolio yields ~1 point;
+backdate created_at in tests). Future mode (module `future`): POST
+/future/sessions {symbols, starting_cash, seed} calibrates GBM from REAL
+1y history (needs ≥60 closes — seed history_bars in tests), then
+/trade + /advance {days} at deterministic simulated prices; every payload
+carries simulated:true; the session portfolio reuses scenario_session_id
+so it never appears in live listings/watcher/leaderboards. Model catalog:
+13 entries, all URLs verified HEAD 200 (Qwen 7B must use the bartowski
+single-file GGUF — the official repo splits q4_k_m). download_progress
+includes speed_bps; small models finish in seconds on the sandbox pipe.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

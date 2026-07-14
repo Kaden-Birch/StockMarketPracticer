@@ -95,4 +95,7 @@ RANGE_PRESETS: dict[str, tuple[str, str]] = {
     "1Y": ("1y", "1d"),
     "5Y": ("5y", "1wk"),
     "MAX": ("max", "1mo"),
+    # a decade of daily bars — lets charts zoom out past any preset window
+    # without a refetch (Yahoo silently downgrades "max"+1d to monthly)
+    "FULL": ("10y", "1d"),
 }

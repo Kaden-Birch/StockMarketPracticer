@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..marketdata.base import RANGE_PRESETS, MarketDataError, SymbolNotFound
 from ..marketdata.service import MarketDataService
@@ -128,3 +128,89 @@ def search(q: str, market: MarketDataService = Depends(get_market)):
         {"symbol": m.symbol, "name": m.name, "exchange": m.exchange, "type": m.type}
         for m in matches
     ]
+
+
+@router.get("/profile/{symbol}")
+def get_profile(symbol: str, market: MarketDataService = Depends(get_market)):
+    """Real company profile: sector, industry, description, key stats."""
+    try:
+        return market.get_profile(symbol.upper())
+    except SymbolNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except MarketDataError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.get("/news/{symbol}")
+def get_news(symbol: str, market: MarketDataService = Depends(get_market)):
+    """Recent real news articles about the company."""
+    try:
+        return market.get_news(symbol.upper())
+    except SymbolNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except MarketDataError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/summary/{symbol}")
+def ai_stock_summary(symbol: str, request: Request,
+                     market: MarketDataService = Depends(get_market)):
+    """Short AI summary of recent stock performance, grounded ONLY in real
+    computed statistics and the real company profile — the model narrates
+    verified numbers, it never invents them. 409 without a loaded model."""
+    manager = request.app.state.model_manager
+    if not manager.runtime.model_id:
+        raise HTTPException(status_code=409,
+                            detail="No AI model loaded — load one in AI Models")
+    symbol = symbol.upper()
+    try:
+        bars = market.get_history(symbol, "1y", "1d").bars
+        quote = market.get_quote(symbol)
+        profile = None
+        try:
+            profile = market.get_profile(symbol)
+        except MarketDataError:
+            pass
+    except SymbolNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except MarketDataError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    closes = [b.close for b in bars if b.close]
+    if len(closes) < 25:
+        raise HTTPException(status_code=422, detail="Not enough history to summarize")
+
+    def ret(days: int) -> float | None:
+        if len(closes) <= days:
+            return None
+        return round((closes[-1] / closes[-days - 1] - 1) * 100, 1)
+
+    high, low = max(closes), min(closes)
+    facts = {
+        "symbol": symbol,
+        "price": str(quote.price),
+        "currency": quote.currency,
+        "return_1m_pct": ret(21),
+        "return_6m_pct": ret(126),
+        "return_1y_pct": round((closes[-1] / closes[0] - 1) * 100, 1),
+        "pct_below_52w_high": round((1 - closes[-1] / high) * 100, 1),
+        "pct_above_52w_low": round((closes[-1] / low - 1) * 100, 1),
+    }
+    if profile:
+        facts["sector"] = profile.get("sector")
+        facts["industry"] = profile.get("industry")
+        facts["trailing_pe"] = profile.get("trailing_pe")
+        facts["dividend_yield"] = profile.get("dividend_yield")
+    system = (
+        "You are an investing teacher in a paper-trading simulator. Write a "
+        "3-5 sentence plain-language summary of this stock's recent "
+        "performance using ONLY the verified statistics provided. Do not "
+        "invent numbers, predictions, or price targets. Educational, never "
+        "advice."
+    )
+    import json as _json
+
+    text = manager.runtime.generate(system, _json.dumps(facts, indent=1),
+                                    max_tokens=250).strip()
+    return {"summary": text + "\n\n(AI-written from verified statistics — "
+                              "educational, not financial advice.)",
+            "facts": facts}

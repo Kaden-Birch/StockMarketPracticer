@@ -81,6 +81,7 @@ are active.
 | `classroom` | scenarios | Read/ModifyPortfolio, AccessMultiplayer | — | — |
 | `ai_competitors` | multiplayer | Read/ModifyPortfolio, ReadHistorical, AccessMultiplayer | order_filled | — |
 | `knowledge` | — | ReadPortfolio, ReadHistorical, AccessAIModels | — | — |
+| `future` | — | Read/ModifyPortfolio, ReadHistorical | — | — |
 
 Each contributes UI (nav items / portfolio tabs / settings pages) that the
 frontend renders only when the module is running.
