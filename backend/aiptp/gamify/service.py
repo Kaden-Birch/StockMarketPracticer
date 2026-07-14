@@ -25,6 +25,10 @@ ACTION_XP: dict[str, tuple[str, int, int | None]] = {
     "analytics_reviewed": ("portfolio", 10, 2),
     "backtest_completed": ("research", 20, 3),
     "coach_suggestion_read": ("education", 15, 4),
+    # M10 learning system — education XP, daily-capped like everything else
+    "concept_viewed": ("education", 5, 8),
+    "quiz_passed": ("education", 15, 5),
+    "path_completed": ("education", 50, 1),
 }
 
 

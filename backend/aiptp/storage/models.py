@@ -867,3 +867,22 @@ class AiDecision(Base):
     expected_outcome: Mapped[str] = mapped_column(Text, default="")
     executed_order_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ConceptProgress(Base):
+    """Knowledge tracking (roadmap 10.7): per-user record of concepts
+    viewed and quiz results."""
+
+    __tablename__ = "concept_progress"
+    __table_args__ = (
+        Index("ix_concept_progress_unique", "username", "concept_id", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(80), default="local")
+    concept_id: Mapped[str] = mapped_column(String(60))
+    viewed_count: Mapped[int] = mapped_column(default=0)
+    quiz_score: Mapped[int | None] = mapped_column(nullable=True)  # percent
+    quiz_passed: Mapped[bool] = mapped_column(default=False)
+    first_viewed: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_viewed: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

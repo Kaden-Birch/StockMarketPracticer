@@ -49,6 +49,13 @@ CATALOG: list[Achievement] = [
                 "Review 50 companies", 250),
     Achievement("student_10", "Student of the Market", "education",
                 "Read 10 learning suggestions from the coach", 150),
+    # M10 learning achievements (roadmap 10.8)
+    Achievement("first_concept", "First Steps", "education",
+                "Learn your first investing concept", 50),
+    Achievement("fundamentals", "Completed Fundamentals", "education",
+                "Finish the Beginner Investor learning path", 200),
+    Achievement("quiz_ace", "Quiz Ace", "education",
+                "Pass 5 knowledge quizzes", 150),
     Achievement("diversified", "Diversified", "portfolio",
                 "Reach a diversification score of 60+ with 5+ positions", 150),
     Achievement("benchmark_beater", "Benchmark Beater", "portfolio",
@@ -148,6 +155,26 @@ def evaluate_achievements(session: Session, market, bus) -> int:
             granted += 1
         if check("researcher_50") and distinct_reviews >= 50:
             _grant(session, bus, CATALOG_BY_ID["researcher_50"])
+            granted += 1
+
+    # M10 learning achievements (roadmap 10.8) from ConceptProgress
+    if check("first_concept") or check("fundamentals") or check("quiz_ace"):
+        from ..storage.models import ConceptProgress
+
+        rows = session.scalars(select(ConceptProgress)).all()
+        viewed = [r for r in rows if r.viewed_count > 0
+                  and not r.concept_id.startswith("path:")]
+        passed = [r for r in rows if r.quiz_passed
+                  and not r.concept_id.startswith("path:")]
+        paths = {r.concept_id for r in rows if r.concept_id.startswith("path:")}
+        if check("first_concept") and viewed:
+            _grant(session, bus, CATALOG_BY_ID["first_concept"])
+            granted += 1
+        if check("fundamentals") and "path:beginner_investor" in paths:
+            _grant(session, bus, CATALOG_BY_ID["fundamentals"])
+            granted += 1
+        if check("quiz_ace") and len(passed) >= 5:
+            _grant(session, bus, CATALOG_BY_ID["quiz_ace"])
             granted += 1
 
     if check("student_10"):
