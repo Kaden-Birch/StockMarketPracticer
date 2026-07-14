@@ -12,6 +12,7 @@ import CareerPage from "./pages/Career";
 import ClassroomPage from "./pages/Classroom";
 import CommunityPage from "./pages/Community";
 import CompaniesPage from "./pages/Companies";
+import LearnPage from "./pages/Learn";
 import MentorPage from "./pages/Mentor";
 import ScenariosPage from "./pages/Scenarios";
 import CompanyPage from "./pages/Company";
@@ -63,6 +64,7 @@ export default function App() {
         <NavLink to="/models">AI Models</NavLink>
         {running("gamification") && <NavLink to="/profile">Profile</NavLink>}
         {running("ai_mentor") && <NavLink to="/mentor">Mentor</NavLink>}
+        {running("knowledge") && <NavLink to="/learn">Learn</NavLink>}
         {running("scenarios") && <NavLink to="/scenarios">Scenarios</NavLink>}
         {running("career") && <NavLink to="/career">Career</NavLink>}
         {running("classroom") && <NavLink to="/classroom">Classroom</NavLink>}
@@ -96,6 +98,7 @@ export default function App() {
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/mentor" element={<MentorPage />} />
+          <Route path="/learn" element={<LearnPage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/career" element={<CareerPage />} />
           <Route path="/classroom" element={<ClassroomPage />} />

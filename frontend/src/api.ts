@@ -722,6 +722,61 @@ export interface ClassroomProgress {
   }[];
 }
 
+// ---- M10: knowledge base ----
+
+export interface ConceptSummary {
+  id: string;
+  term: string;
+  category: string;
+  category_name: string;
+  beginner: string;
+  intermediate: string;
+  advanced: string;
+  related: string[];
+  has_quiz: boolean;
+  viewed?: boolean;
+  quiz_passed?: boolean;
+}
+
+export interface ConceptDetail extends ConceptSummary {
+  quiz?: { question: string; options: string[] }[];
+  viewed_count: number;
+  quiz_score: number | null;
+}
+
+export interface QuizResult {
+  score: number;
+  passed: boolean;
+  results: { correct: boolean; answer: number; why: string }[];
+}
+
+export interface PathView {
+  id: string;
+  name: string;
+  description: string;
+  steps: { concept_id: string; term: string; viewed: boolean;
+           has_quiz: boolean; quiz_passed: boolean; complete: boolean }[];
+  done: number;
+  total: number;
+  completed: boolean;
+}
+
+export interface LearnProgress {
+  concepts_viewed: number;
+  concepts_total: number;
+  quizzes_passed: number;
+  paths_completed: string[];
+  categories: Record<string, { name: string; viewed: number; total: number }>;
+  achievements: { id: string; name: string; description: string; earned: boolean }[];
+}
+
+export interface LearnSuggestion {
+  concept_id: string;
+  term?: string;
+  why: string;
+  portfolio: string | null;
+}
+
 export class AuthRequiredError extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -1116,6 +1171,30 @@ export const api = {
     }),
   competitionAnalysis: (competitionId: string) =>
     request<CompetitionAnalysis>(`/competitions/${competitionId}/analysis`),
+  // M10
+  learnConcepts: (q = "", category = "") =>
+    request<{ categories: { id: string; name: string }[]; concepts: ConceptSummary[] }>(
+      `/learn/concepts?q=${encodeURIComponent(q)}&category=${category}`,
+    ),
+  learnConcept: (id: string) => request<ConceptDetail>(`/learn/concepts/${id}`),
+  submitQuiz: (id: string, answers: number[]) =>
+    request<QuizResult>(`/learn/concepts/${id}/quiz`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }),
+  learnPaths: () => request<PathView[]>("/learn/paths"),
+  learnProgress: () => request<LearnProgress>("/learn/progress"),
+  learnSuggestions: () => request<LearnSuggestion[]>("/learn/suggestions"),
+  askConcept: (id: string, mode: string, extra: object = {}) =>
+    request<{ answer: string }>(`/learn/concepts/${id}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ mode, ...extra }),
+    }),
+  simulate: (kind: string, params: object) =>
+    request<Record<string, unknown>>(`/learn/simulate/${kind}`, {
+      method: "POST",
+      body: JSON.stringify({ params }),
+    }),
   listUsers: () => request<UserView[]>("/admin/users"),
   createUser: (body: object) =>
     request<UserView>("/admin/users", { method: "POST", body: JSON.stringify(body) }),

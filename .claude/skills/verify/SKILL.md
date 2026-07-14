@@ -174,6 +174,26 @@ market_timer is risk-ON (price == trend). Analysis: GET
 multiplayer. Scenario comparisons now include ai_index/ai_growth/
 ai_value/ai_dividend (style series skip universes with <2 matches).
 
+## Knowledge base (M10)
+
+GET /learn/concepts?q=&category= (35 concepts; content in
+aiptp/knowledge/content.py — tests validate integrity: 3 levels, valid
+related links, quiz answers in range). GET /learn/concepts/{id} records a
+view + awards concept_viewed education XP on FIRST view only. Quiz: POST
+/learn/concepts/{id}/quiz {answers:[indices]} → pass ≥70; correct answers
++ explanations come back in results. Paths auto-award path_completed XP
+once (marker row concept_id="path:<id>"). Learning achievements land BOTH
+in /learn/progress and the real gamify engine after /gamify/evaluate
+(check via /gamify/profile achievements[].earned_at — there is no
+/gamify/achievements endpoint). Suggestions (/learn/suggestions) are
+grounded: concentration names the ticker; mentor gaps map via
+MENTOR_CONCEPT_MAP; passed-quiz concepts are filtered out. Simulators:
+POST /learn/simulate/{compound_growth|diversification|risk_allocation|
+market_crash}; market_crash replays the scenario benchmark window via
+get_history_window (FakeProvider: seed SPY bars INSIDE the scenario's
+real window). Glossary popovers (frontend Term component) read the cached
+list — they do NOT record views/XP; only opening the full concept does.
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).

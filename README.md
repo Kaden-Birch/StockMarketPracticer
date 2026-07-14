@@ -10,7 +10,25 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M9 — AI Investment Competitors & Simulated Opponents (working).**
+**Phase: M10 — Investment Knowledge Base & Interactive Learning (working —
+final milestone of the M1-M10 roadmap).**
+A searchable investment dictionary of 35 concepts across six categories,
+each with beginner, intermediate, and advanced explanations, related-term
+links, and quizzes with per-answer explanations. Contextual learning
+detects opportunities in your real portfolio ("NVDA is 90% of this
+portfolio — learn about concentration risk") and the persistent mentor's
+knowledge gaps feed straight into suggestions. Three prebuilt learning
+paths, knowledge tracking with per-category coverage, learning
+achievements wired into the real XP/achievement engine (education XP,
+never trading volume), grounded AI explanations (explain simply, give
+examples, impact on my portfolio, compare concepts), and interactive
+simulators — compound growth, diversification math with the systematic-
+risk floor, allocation risk cones with documented assumptions, and a
+market-crash simulator that replays REAL index paths (2008: −56% and
+still under water two years later). Every key metric label across the app
+is clickable (universal glossary) with an instant beginner explanation.
+
+Previously — **M9 (AI Investment Competitors & Simulated Opponents):**
 Nine AI investor profiles — Conservative, Growth, Value, Dividend,
 Technical, Quant, Market Timer, an educational Beginner that explains its
 own mistakes, and a passive Index Fund — join regular competitions as real

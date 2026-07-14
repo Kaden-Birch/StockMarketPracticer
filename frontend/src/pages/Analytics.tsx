@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Analytics, api, fmtMoney, pnlClass, PortfolioView, ValueHistory } from "../api";
+import Term from "../components/Term";
 import ValueChart from "../components/ValueChart";
 import { useChartRange } from "../chartSync";
 
 const RANGES = ["1M", "3M", "6M", "1Y", "5Y", "MAX"];
 
-function Tile({ label, value, sub, cls }: { label: string; value: string; sub?: string; cls?: string }) {
+function Tile({ label, value, sub, cls, term }:
+  { label: string; value: string; sub?: string; cls?: string; term?: string }) {
   return (
     <div className="card stat">
-      <div className="label">{label}</div>
+      <div className="label">
+        {term ? <Term id={term}>{label}</Term> : label}
+      </div>
       <div className={`value ${cls ?? ""}`}>{value}</div>
       {sub && <div className="sub">{sub}</div>}
     </div>
@@ -93,13 +97,13 @@ export default function AnalyticsPage() {
         <>
           <h2 style={{ margin: "20px 0 10px" }}>Risk ({range})</h2>
           <div className="cards-row">
-            <Tile label="Sharpe ratio" value={risk.sharpe?.toFixed(2) ?? "—"} />
-            <Tile label="Sortino ratio" value={risk.sortino?.toFixed(2) ?? "—"} />
-            <Tile label={`Beta vs ${history?.benchmark ?? "SPY"}`} value={risk.beta?.toFixed(2) ?? "—"} />
-            <Tile label="Volatility (ann.)" value={risk.volatility !== null ? `${risk.volatility}%` : "—"} />
-            <Tile label="Max drawdown" value={risk.max_drawdown !== null ? `${risk.max_drawdown}%` : "—"}
+            <Tile label="Sharpe ratio" term="sharpe_ratio" value={risk.sharpe?.toFixed(2) ?? "—"} />
+            <Tile label="Sortino ratio" term="sharpe_ratio" value={risk.sortino?.toFixed(2) ?? "—"} />
+            <Tile label={`Beta vs ${history?.benchmark ?? "SPY"}`} term="beta" value={risk.beta?.toFixed(2) ?? "—"} />
+            <Tile label="Volatility (ann.)" term="volatility" value={risk.volatility !== null ? `${risk.volatility}%` : "—"} />
+            <Tile label="Max drawdown" term="max_drawdown" value={risk.max_drawdown !== null ? `${risk.max_drawdown}%` : "—"}
               cls={risk.max_drawdown && risk.max_drawdown < 0 ? "loss" : ""} />
-            <Tile label="Diversification" value={div?.score !== null && div ? `${div.score}` : "—"}
+            <Tile label="Diversification" term="diversification" value={div?.score !== null && div ? `${div.score}` : "—"}
               sub="0 concentrated · 100 spread" />
           </div>
         </>
