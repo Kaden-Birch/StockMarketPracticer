@@ -38,7 +38,7 @@ from .modules import build_modules
 from .security import auth as auth_service
 from .security import credentials
 from .security.backup import backup_database
-from .storage.db import Base, make_engine, make_session_factory
+from .storage.db import Base, auto_upgrade, make_engine, make_session_factory
 from .trading.corporate import run_corporate_actions_cycle
 from .watcher import run_watch_cycle
 
@@ -109,6 +109,9 @@ def create_app(
     cfg = cfg or settings
     engine = make_engine(cfg.resolved_db_url())
     Base.metadata.create_all(engine)
+    # Databases from older versions gain any missing columns in place —
+    # updating never requires deleting the data directory.
+    auto_upgrade(engine)
     session_factory = make_session_factory(engine)
     market = market or build_market(cfg, session_factory)
     if model_manager is None:

@@ -132,10 +132,10 @@ git pull
 cd frontend && npm install && npm run build && cd ..
 ```
 
-Pre-1.0 there are no schema migrations: if the server fails to boot after
-a big update, move/delete the data dir (`~/aiptp-data`) and start fresh
-(it's simulated money — nothing of value is lost, though backups live in
-`<data-dir>/backups` if you want the history).
+The database upgrades itself: on startup the server adds any columns and
+tables a newer version introduced, in place, keeping your data. You never
+need to delete the data dir after `git pull` — just restart. (Automatic
+daily backups live in `<data-dir>/backups` regardless.)
 
 ## Sanity checks
 
