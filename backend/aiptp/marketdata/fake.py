@@ -66,6 +66,11 @@ class FakeProvider:
             bars=bars, provider=self.name, fetched_at=datetime.now(timezone.utc),
         )
 
+    def get_history_window(self, symbol: str, start_ts: int, end_ts: int) -> History:
+        hist = self.get_history(symbol, "window", "1d")
+        hist.bars = [b for b in hist.bars if start_ts <= b.ts <= end_ts]
+        return hist
+
     def get_corporate_actions(self, symbol: str, range_: str = "3mo") -> list[CorporateAction]:
         return self.corporate_actions.get(symbol.upper(), [])
 

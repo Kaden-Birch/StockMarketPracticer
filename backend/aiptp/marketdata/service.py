@@ -101,6 +101,26 @@ class MarketDataService:
             self._history[key] = (now, hist)
         return hist
 
+    def get_history_window(self, symbol: str, start_ts: int, end_ts: int) -> History:
+        """Daily bars for an explicit historical window (roadmap 8.2 scenario
+        replays). Closed windows are immutable, so they cache indefinitely
+        for the process lifetime. Falls through the provider chain to the
+        first provider that supports window fetches."""
+        key = (symbol.upper(), f"w{start_ts}", f"w{end_ts}")
+        with self._lock:
+            cached = self._history.get(key)
+            if cached:
+                return cached[1]
+        def fetch(p):
+            if not hasattr(p, "get_history_window"):
+                raise MarketDataError(f"{p.name} cannot fetch historical windows")
+            return p.get_history_window(symbol, start_ts, end_ts)
+
+        hist = self._fanout(Capability.HISTORY, fetch)
+        with self._lock:
+            self._history[key] = (time.monotonic(), hist)
+        return hist
+
     def get_fx_rate(self, from_ccy: str, to_ccy: str) -> Decimal:
         if from_ccy == to_ccy:
             return Decimal("1")

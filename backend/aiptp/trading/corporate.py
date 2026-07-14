@@ -185,7 +185,9 @@ def run_corporate_actions_cycle(session_factory, market: MarketDataService, bus)
             portfolios = session.scalars(
                 select(Portfolio)
                 .join(Holding, Holding.portfolio_id == Portfolio.id)
-                .where(Holding.symbol == symbol, Holding.quantity > 0)
+                .where(Holding.symbol == symbol, Holding.quantity > 0,
+                       # never apply today's dividends to a 1999 replay
+                       Portfolio.scenario_session_id.is_(None))
             ).unique().all()
             for portfolio in portfolios:
                 for action in actions:

@@ -25,6 +25,7 @@ class AiMentorModule(Module):
             UiContribution(kind="portfolio_tab", label="AI Assistant",
                             path="assistant", icon="🤖"),
             UiContribution(kind="portfolio_tab", label="Coach", path="coach", icon="🧭"),
+            UiContribution(kind="nav_item", label="Mentor", path="mentor", icon="🎓"),
         ],
     )
 
@@ -33,6 +34,7 @@ class AiMentorModule(Module):
 
         from ..api import ai as ai_api
         from ..api import gamify as gamify_api
+        from ..api import mentor_api
         from ..api.deps import require_module
 
         gate = [Depends(require_module("ai_mentor"))]
@@ -41,3 +43,6 @@ class AiMentorModule(Module):
         # the learning coach travels with the mentor, not with gamification —
         # Learning-preset portfolios keep it.
         ctx.app.include_router(gamify_api.coach_router, prefix=API_PREFIX, dependencies=gate)
+        # the persistent mentor (roadmap 8.1): deterministic behavioral
+        # analysis with durable memory; LLM only narrates.
+        ctx.app.include_router(mentor_api.router, prefix=API_PREFIX, dependencies=gate)

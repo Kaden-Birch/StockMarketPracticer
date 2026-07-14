@@ -111,6 +111,13 @@ class Portfolio(Base):
     # Experience preset (roadmap 6.11.5): which modules act on this portfolio.
     preset: Mapped[str] = mapped_column(String(20), default="ACADEMY")
     game_xp: Mapped[int] = mapped_column(default=0)
+    # M8.4: optional mandate ("" | retirement | growth | dividend | technology)
+    # — compliance is reported, never force-liquidated.
+    mandate: Mapped[str] = mapped_column(String(20), default="")
+    # M8.2: set when this is a historical-scenario game portfolio. Scenario
+    # portfolios trade at historical closes and are excluded from live
+    # listings, the watcher, and live corporate actions.
+    scenario_session_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -680,3 +687,139 @@ class AppliedCorporateAction(Base):
     kind: Mapped[str] = mapped_column(String(16))  # DIVIDEND | SPLIT
     ex_ts: Mapped[int] = mapped_column()  # provider event timestamp (unix)
     applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ---------------------------------------------------------------- M8 models
+
+
+class ObservationStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    RESOLVED = "RESOLVED"
+
+
+class MentorObservation(Base):
+    """Persistent mentor memory (roadmap 8.1): one row per (user, insight
+    code), updated each analysis run. RESOLVED rows are kept — the mentor
+    remembers what you fixed."""
+
+    __tablename__ = "mentor_observations"
+    __table_args__ = (Index("ix_mentor_obs_unique", "username", "code", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(80), default="local")
+    code: Mapped[str] = mapped_column(String(60))
+    category: Mapped[str] = mapped_column(String(20))  # behavior|allocation|knowledge|strength
+    severity: Mapped[str] = mapped_column(String(12), default="info")  # info|notice|important
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    evidence: Mapped[str] = mapped_column(Text, default="{}")  # JSON metrics backing it
+    status: Mapped[ObservationStatus] = mapped_column(
+        Enum(ObservationStatus), default=ObservationStatus.ACTIVE
+    )
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    times_seen: Mapped[int] = mapped_column(default=1)
+
+
+class MentorProfile(Base):
+    """The mentor's model of the investor (roadmap 8.1): style, traits,
+    strengths, and knowledge gaps, refreshed by the analysis engine."""
+
+    __tablename__ = "mentor_profiles"
+
+    username: Mapped[str] = mapped_column(String(80), primary_key=True)
+    style: Mapped[str] = mapped_column(String(60), default="")
+    traits: Mapped[str] = mapped_column(Text, default="{}")  # JSON metric snapshot
+    strengths: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
+    knowledge_gaps: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ScenarioSession(Base):
+    """A historical replay in progress (roadmap 8.2). The virtual clock only
+    moves forward; the API never serves bars beyond current_ts, so the player
+    has no future knowledge. value_points accumulates the player's daily
+    value series for the comparison chart."""
+
+    __tablename__ = "scenario_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    scenario_id: Mapped[str] = mapped_column(String(40))
+    username: Mapped[str] = mapped_column(String(80), default="local")
+    display_name: Mapped[str] = mapped_column(String(80), default="")
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    current_ts: Mapped[int] = mapped_column()  # unix ts of the virtual "today" bar
+    completed: Mapped[bool] = mapped_column(default=False)
+    value_points: Mapped[str] = mapped_column(Text, default="[]")  # JSON [(ts, value)]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CareerState(Base):
+    """Career-mode progression (roadmap 8.3): rank index plus the objective
+    codes completed so far (append-only; objectives never un-complete)."""
+
+    __tablename__ = "career_states"
+
+    username: Mapped[str] = mapped_column(String(80), primary_key=True)
+    rank: Mapped[int] = mapped_column(default=0)
+    completed: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of codes
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Classroom(Base):
+    """Classroom mode (roadmap 8.6): an instructor and their students."""
+
+    __tablename__ = "classrooms"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    instructor: Mapped[str] = mapped_column(String(80))
+    invite_code: Mapped[str] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ClassroomStudent(Base):
+    __tablename__ = "classroom_students"
+    __table_args__ = (
+        Index("ix_classroom_student_unique", "classroom_id", "username", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    classroom_id: Mapped[str] = mapped_column(ForeignKey("classrooms.id", ondelete="CASCADE"))
+    username: Mapped[str] = mapped_column(String(80))
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Assignment(Base):
+    """Instructor-created work (roadmap 8.6): a fresh portfolio per student,
+    optionally pinned to a historical scenario and/or a mandate."""
+
+    __tablename__ = "assignments"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    classroom_id: Mapped[str] = mapped_column(ForeignKey("classrooms.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    scenario_id: Mapped[str] = mapped_column(String(40), default="")  # "" = live market
+    mandate: Mapped[str] = mapped_column(String(20), default="")
+    starting_balance: Mapped[Decimal] = mapped_column(DecimalStr, default=Decimal("100000"))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AssignmentEntry(Base):
+    """A student's started assignment: links to their working portfolio (and
+    scenario session when the assignment replays history)."""
+
+    __tablename__ = "assignment_entries"
+    __table_args__ = (
+        Index("ix_assignment_entry_unique", "assignment_id", "username", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
+    username: Mapped[str] = mapped_column(String(80))
+    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    scenario_session_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

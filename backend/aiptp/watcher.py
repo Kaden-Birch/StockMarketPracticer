@@ -21,10 +21,21 @@ log = logging.getLogger(__name__)
 
 
 def watched_symbols(session: Session) -> set[str]:
+    # Scenario replay portfolios (M8.2) price at historical closes — their
+    # symbols must not trigger live quote fetches or fills.
+    from .storage.models import Portfolio
+
+    live_ids = select(Portfolio.id).where(Portfolio.scenario_session_id.is_(None))
     pending = session.scalars(
-        select(Order.symbol).where(Order.status == OrderStatus.PENDING).distinct()
+        select(Order.symbol).where(
+            Order.status == OrderStatus.PENDING, Order.portfolio_id.in_(live_ids)
+        ).distinct()
     ).all()
-    held = session.scalars(select(Holding.symbol).where(Holding.quantity > 0).distinct()).all()
+    held = session.scalars(
+        select(Holding.symbol).where(
+            Holding.quantity > 0, Holding.portfolio_id.in_(live_ids)
+        ).distinct()
+    ).all()
     out = set(pending) | set(held)
     # symbols referenced by enabled automation rules (event-driven triggers)
     import json

@@ -38,8 +38,17 @@ class YahooProvider:
     def close(self) -> None:
         self._client.close()
 
-    def _chart(self, symbol: str, range_: str, interval: str, events: str = "") -> dict:
-        params: dict[str, str] = {"range": range_, "interval": interval}
+    def _chart(self, symbol: str, range_: str, interval: str, events: str = "",
+               period1: int | None = None, period2: int | None = None) -> dict:
+        params: dict[str, str] = {"interval": interval}
+        if period1 is not None and period2 is not None:
+            # Explicit unix window — how historical-scenario replays (M8.2)
+            # get daily bars from decades ago, where `range` only gives
+            # coarse granularity.
+            params["period1"] = str(period1)
+            params["period2"] = str(period2)
+        else:
+            params["range"] = range_
         if events:
             params["events"] = events
         try:
@@ -84,8 +93,17 @@ class YahooProvider:
             )
         return quotes
 
+    def get_history_window(self, symbol: str, start_ts: int, end_ts: int) -> History:
+        """Real daily bars for an explicit historical window (roadmap 8.2)."""
+        result = self._chart(symbol, "", "1d", period1=start_ts, period2=end_ts)
+        return self._history_from(result, symbol, f"{start_ts}-{end_ts}", "1d")
+
     def get_history(self, symbol: str, range_: str, interval: str) -> History:
         result = self._chart(symbol, range_, interval)
+        return self._history_from(result, symbol, range_, interval)
+
+    def _history_from(self, result: dict, symbol: str, range_: str,
+                      interval: str) -> History:
         meta = result["meta"]
         timestamps = result.get("timestamp") or []
         quote = (result.get("indicators", {}).get("quote") or [{}])[0]
