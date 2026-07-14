@@ -142,7 +142,7 @@ def test_scenario_replay_no_future_knowledge(scenario_client):
                json={"scenario_id": "covid_crash", "display_name": "P1"}).json()
     sid = v["id"]
     assert v["day"] == 1 and v["total_days"] == 20
-    assert v["quotes"]["AAPL"]["price"] == "100"  # day-0 close
+    assert Decimal(v["quotes"]["AAPL"]["price"]) == 100  # day-0 close
 
     # only day-1 bars are served — the future stays hidden
     h = c.get(f"/api/v1/scenarios/sessions/{sid}/history/AAPL").json()
@@ -152,7 +152,7 @@ def test_scenario_replay_no_future_knowledge(scenario_client):
     t = c.post(f"/api/v1/scenarios/sessions/{sid}/trade",
                json={"symbol": "AAPL", "side": "BUY", "quantity": "100"})
     assert t.status_code == 201
-    assert t.json()["filled_price"] == "100"
+    assert Decimal(t.json()["filled_price"]) == 100
 
     # outside-universe and unlisted trades are refused
     assert c.post(f"/api/v1/scenarios/sessions/{sid}/trade",
@@ -162,7 +162,7 @@ def test_scenario_replay_no_future_knowledge(scenario_client):
     # advance 5 trading days: AAPL walks 100 -> 105
     v = c.post(f"/api/v1/scenarios/sessions/{sid}/advance", json={"days": 5}).json()
     assert v["day"] == 6
-    assert v["quotes"]["AAPL"]["price"] == "105"
+    assert Decimal(v["quotes"]["AAPL"]["price"]) == 105
     assert Decimal(v["value"]) == Decimal("100000") + 100 * Decimal("5")
     h = c.get(f"/api/v1/scenarios/sessions/{sid}/history/AAPL").json()
     assert len(h["bars"]) == 6

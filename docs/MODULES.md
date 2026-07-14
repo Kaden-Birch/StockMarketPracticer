@@ -76,6 +76,9 @@ are active.
 | `multiplayer` | — | Read/ModifyPortfolio, AccessMultiplayer | order_filled | — |
 | `leaderboards` | — | ReadPortfolio, ReadHistorical | — | — |
 | `discord` | notifications | ReadPortfolio, SendNotifications | — | order_filled, achievement, challenge, level_up, ai_analysis, competition |
+| `scenarios` | — | Read/ModifyPortfolio, ReadHistorical | — | — |
+| `career` | — | ReadPortfolio, ReadHistorical | — | — |
+| `classroom` | scenarios | Read/ModifyPortfolio, AccessMultiplayer | — | — |
 
 Each contributes UI (nav items / portfolio tabs / settings pages) that the
 frontend renders only when the module is running.

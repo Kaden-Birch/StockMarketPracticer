@@ -538,6 +538,136 @@ export interface UserView {
   created_at: string;
 }
 
+// ---- M8: mentor, scenarios, career, classroom ----
+
+export interface MentorObservationView {
+  id: string;
+  code: string;
+  category: string;
+  severity: "info" | "notice" | "important";
+  title: string;
+  body: string;
+  evidence: Record<string, unknown>;
+  status: "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
+  first_seen: string;
+  times_seen: number;
+}
+
+export interface MentorView {
+  profile: {
+    style: string;
+    traits: Record<string, unknown>;
+    strengths: string[];
+    knowledge_gaps: string[];
+    updated_at: string | null;
+  };
+  observations: MentorObservationView[];
+  resolved: MentorObservationView[];
+}
+
+export interface ScenarioInfo {
+  id: string;
+  name: string;
+  period: string;
+  description: string;
+  benchmark: string;
+  universe: string[];
+  starting_cash: string;
+  difficulty: string;
+}
+
+export interface ScenarioSessionView {
+  id: string;
+  scenario: ScenarioInfo;
+  portfolio_id: string;
+  display_name: string;
+  virtual_date: string;
+  day: number;
+  total_days: number;
+  completed: boolean;
+  cash: string;
+  value: string;
+  return_pct: string;
+  market_return_pct: string;
+  quotes: Record<string, { price: string | null; prev_close: string | null; listed: boolean }>;
+  holdings: { symbol: string; quantity: string; price: string | null; market_value: string | null }[];
+}
+
+export interface ScenarioComparison {
+  series: { id: string; name: string; points: [number, string][] }[];
+  players: { display_name: string; day: number; value: string; return_pct: string; completed: boolean }[];
+}
+
+export interface CareerObjective {
+  code: string;
+  rank: number;
+  rank_name: string;
+  label: string;
+  description: string;
+  done: boolean;
+  current: boolean;
+}
+
+export interface CareerView {
+  rank: number;
+  rank_name: string;
+  next_rank: string | null;
+  ladder: string[];
+  objectives: CareerObjective[];
+  challenges: CareerObjective[];
+  progress?: { trades: number; total_value: string; best_diversification: number | null };
+}
+
+export interface MandateRule {
+  id: string;
+  label: string;
+  status: "ok" | "violation" | "pending";
+  value: unknown;
+  threshold: string;
+}
+
+export interface MandateCompliance {
+  mandate: string;
+  info?: { name: string; summary: string };
+  rules: MandateRule[];
+  compliant: boolean | null;
+}
+
+export interface ClassroomView {
+  id: string;
+  name: string;
+  instructor: string;
+  role?: string;
+  is_instructor?: boolean;
+  invite_code?: string;
+  students?: { username: string; joined_at: string }[];
+  created_at?: string;
+}
+
+export interface AssignmentView {
+  id: string;
+  classroom_id: string;
+  title: string;
+  description: string;
+  scenario_id: string;
+  mandate: string;
+  starting_balance: string;
+  due_at: string | null;
+  my_entry: { portfolio_id: string; scenario_session_id: string | null; started_at: string } | null;
+}
+
+export interface ClassroomProgress {
+  classroom: string;
+  progress: {
+    assignment: Omit<AssignmentView, "my_entry">;
+    students: {
+      username: string; started: boolean; value?: string; return_pct?: string;
+      scenario_day?: number; scenario_total_days?: number; completed?: boolean;
+      mandate_compliant?: boolean | null; note?: string;
+    }[];
+  }[];
+}
+
 export class AuthRequiredError extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -846,6 +976,69 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ command, arg }),
     }),
+  // M8
+  mentor: () => request<MentorView>("/mentor"),
+  mentorRefresh: () => request<MentorView>("/mentor/refresh", { method: "POST" }),
+  mentorAcknowledge: (id: string) =>
+    request<{ ok: boolean }>(`/mentor/observations/${id}/acknowledge`, { method: "POST" }),
+  mentorNarrative: () =>
+    request<{ narrative: string }>("/mentor/narrative", { method: "POST" }),
+  scenarios: () =>
+    request<{ catalog: ScenarioInfo[]; sessions: { id: string; scenario_id: string; completed: boolean; created_at: string }[] }>("/scenarios"),
+  startScenario: (scenarioId: string, displayName = "") =>
+    request<ScenarioSessionView>("/scenarios/sessions", {
+      method: "POST",
+      body: JSON.stringify({ scenario_id: scenarioId, display_name: displayName }),
+    }),
+  scenarioSession: (id: string) =>
+    request<ScenarioSessionView>(`/scenarios/sessions/${id}`),
+  scenarioTrade: (id: string, body: object) =>
+    request<{ order_id: string; status: string; filled_price: string | null }>(
+      `/scenarios/sessions/${id}/trade`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  scenarioAdvance: (id: string, days: number) =>
+    request<ScenarioSessionView>(`/scenarios/sessions/${id}/advance`, {
+      method: "POST",
+      body: JSON.stringify({ days }),
+    }),
+  scenarioComparison: (id: string) =>
+    request<ScenarioComparison>(`/scenarios/sessions/${id}/comparison`),
+  abandonScenario: (id: string) =>
+    request<void>(`/scenarios/sessions/${id}`, { method: "DELETE" }),
+  career: () => request<CareerView>("/career"),
+  careerEvaluate: () => request<CareerView>("/career/evaluate", { method: "POST" }),
+  mandates: () => request<{ id: string; name: string; summary: string }[]>("/career/mandates"),
+  getMandate: (pid: string) => request<MandateCompliance>(`/portfolios/${pid}/mandate`),
+  setMandate: (pid: string, mandate: string) =>
+    request<MandateCompliance>(`/portfolios/${pid}/mandate`, {
+      method: "PUT",
+      body: JSON.stringify({ mandate }),
+    }),
+  classrooms: () => request<ClassroomView[]>("/classrooms"),
+  createClassroom: (name: string) =>
+    request<ClassroomView>("/classrooms", { method: "POST", body: JSON.stringify({ name }) }),
+  joinClassroom: (inviteCode: string) =>
+    request<{ id: string; name: string }>("/classrooms/join", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode }),
+    }),
+  classroomDetail: (id: string) => request<ClassroomView>(`/classrooms/${id}`),
+  deleteClassroom: (id: string) => request<void>(`/classrooms/${id}`, { method: "DELETE" }),
+  createAssignment: (classroomId: string, body: object) =>
+    request<AssignmentView>(`/classrooms/${classroomId}/assignments`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  assignments: (classroomId: string) =>
+    request<AssignmentView[]>(`/classrooms/${classroomId}/assignments`),
+  startAssignment: (assignmentId: string) =>
+    request<{ portfolio_id: string; scenario_session_id: string | null }>(
+      `/assignments/${assignmentId}/start`,
+      { method: "POST" },
+    ),
+  classroomProgress: (id: string) =>
+    request<ClassroomProgress>(`/classrooms/${id}/progress`),
   listUsers: () => request<UserView[]>("/admin/users"),
   createUser: (body: object) =>
     request<UserView>("/admin/users", { method: "POST", body: JSON.stringify(body) }),

@@ -8,8 +8,12 @@ import AssistantPage from "./pages/Assistant";
 import AutomationPage from "./pages/Automation";
 import ModelsPage from "./pages/Models";
 import ProfilePage from "./pages/Profile";
+import CareerPage from "./pages/Career";
+import ClassroomPage from "./pages/Classroom";
 import CommunityPage from "./pages/Community";
 import CompaniesPage from "./pages/Companies";
+import MentorPage from "./pages/Mentor";
+import ScenariosPage from "./pages/Scenarios";
 import CompanyPage from "./pages/Company";
 import ComparePage from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
@@ -58,6 +62,10 @@ export default function App() {
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/models">AI Models</NavLink>
         {running("gamification") && <NavLink to="/profile">Profile</NavLink>}
+        {running("ai_mentor") && <NavLink to="/mentor">Mentor</NavLink>}
+        {running("scenarios") && <NavLink to="/scenarios">Scenarios</NavLink>}
+        {running("career") && <NavLink to="/career">Career</NavLink>}
+        {running("classroom") && <NavLink to="/classroom">Classroom</NavLink>}
         {(running("multiplayer") || running("leaderboards")) && (
           <NavLink to="/community">Community</NavLink>
         )}
@@ -87,6 +95,10 @@ export default function App() {
           <Route path="/watchlists" element={<WatchlistsPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/community" element={<CommunityPage />} />
+          <Route path="/mentor" element={<MentorPage />} />
+          <Route path="/scenarios" element={<ScenariosPage />} />
+          <Route path="/career" element={<CareerPage />} />
+          <Route path="/classroom" element={<ClassroomPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, fmtMoney, Order, pnlClass, PortfolioView, Txn } from "../api";
 import CommunityCard from "../components/CommunityCard";
 import GameCard from "../components/GameCard";
+import MandateCard from "../components/MandateCard";
 import OrderTicket from "../components/OrderTicket";
 import PlansCard from "../components/PlansCard";
 import RebalanceCard from "../components/RebalanceCard";
@@ -231,6 +232,7 @@ export default function PortfolioPage() {
         </div>
       )}
       <GameCard portfolioId={id} mode={portfolio.mode} />
+      {running("career") && <MandateCard portfolioId={id} />}
       {running("multiplayer") && <CommunityCard portfolioId={id} onTraded={refresh} />}
       <OrderTicket portfolioId={id} onPlaced={refresh} />
       {error && <div className="error">{error}</div>}

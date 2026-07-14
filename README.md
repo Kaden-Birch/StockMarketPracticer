@@ -10,7 +10,27 @@ executing real trades.
 
 ## Project Status
 
-**Phase: M7 — Multiplayer, Community & External Integrations (working).**
+**Phase: M8 — Advanced Learning Ecosystem & AI Mentor (working).**
+A persistent mentor that actually remembers you: deterministic behavioral
+analysis over your real trading history (selling winners too early, panic
+sells, missing international exposure, concentration, cash drag, knowledge
+gaps from the XP trail) with per-insight evidence, durable memory
+(repeated habits count up, fixed ones move to a progress résumé), an
+investment-style profile, and an optional LLM-narrated mentor note that
+only retells the verified findings. Historical scenarios replay real
+market history — the dot-com crash, 2008, COVID, the inflation cycle, the
+2016-19 tech boom — from genuine daily closes with a forward-only virtual
+clock (no future knowledge), trading through the normal order engine, and
+comparison charts against the market, three transparent deterministic AI
+strategies, and other players. Career mode adds the Intern-to-Institutional
+rank ladder with objectives computed from real platform state, portfolio
+mandates (retirement/growth/dividend/technology) with rule-by-rule measured
+compliance, and advanced challenges. Classroom mode gives instructors
+classrooms, invite codes, scenario/mandate assignments, and a live progress
+dashboard. Four new optional modules: extended `ai_mentor`, `scenarios`,
+`career`, and `classroom` (which cascade-disables with scenarios).
+
+Previously — **M7 (Multiplayer, Community & External Integrations):**
 Multi-user server mode with per-portfolio ownership and membership (owners,
 managers, members, viewers), admin-managed accounts, competitions where every
 entrant starts a fresh game portfolio at the same balance (scored by return,

@@ -52,11 +52,13 @@ def scenario_bars(market: MarketDataService, scenario: Scenario) -> dict[str, li
 
 
 def close_at(bars: list[Bar], ts: int) -> Decimal | None:
-    """Close of the last bar at or before ts (None before first listing)."""
+    """Close of the last bar at or before ts (None before first listing).
+    Quantized to cents-ish precision so float repr noise never leaks into
+    fills or views."""
     idx = bisect_right([b.ts for b in bars], ts) - 1
     if idx < 0:
         return None
-    return Decimal(str(bars[idx].close))
+    return Decimal(str(bars[idx].close)).quantize(Decimal("0.0001"))
 
 
 def calendar(bars_by_symbol: dict[str, list[Bar]], benchmark: str) -> list[int]:

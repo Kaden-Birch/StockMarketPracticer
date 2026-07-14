@@ -127,6 +127,29 @@ Multi-user testing: one TestClient per user against the same `app` object
 POST /admin/users creates traders. Trigger ASTs are single-key nodes:
 `{"price": {"symbol": "$SYMBOL", "op": "<", "value": 90}}`.
 
+## Learning ecosystem (M8)
+
+Mentor: POST /mentor/refresh runs the deterministic behavior engine
+(observations upsert per (user, code); missing codes → RESOLVED, kept as
+the "résumé"); `company_viewed` is RESEARCH XP — only
+`coach_suggestion_read` earns education XP (the no_education_activity
+observation resolves via that). Narrative needs a loaded model (409
+otherwise). Scenarios: POST /scenarios/sessions {scenario_id} (ids:
+dotcom_crash, gfc_2008, covid_crash, inflation_cycle, tech_boom) — real
+daily bars via `get_history_window(symbol, p1, p2)` (Yahoo period1/period2;
+FakeProvider slices its `history_bars` by ts, so tests must seed bars
+INSIDE the scenario's real window for every universe symbol + benchmark).
+Trade/advance/comparison under /scenarios/sessions/{id}/...; virtual clock
+only moves on /advance; scenario portfolios have `scenario_session_id` set
+and are excluded from live listings, the watcher, and corporate actions.
+Career: POST /career/evaluate persists; new CareerState rows need explicit
+rank=0/completed="[]" (column defaults are insert-time). Mandates: PUT
+/portfolios/{id}/mandate; technology uses a curated ticker list; rules can
+be `pending` (young portfolio) — compliant is then null, not false.
+Classroom: assignments with scenario_id create the scenario session at
+/assignments/{id}/start; progress dashboard is instructor-only (403).
+Module deps: classroom → scenarios (cascade like discord → notifications).
+
 ## Gotchas
 
 - Backend tests: `cd backend && ../.venv/bin/python -m pytest -q` (44+ tests, ~3s).
